@@ -1,12 +1,14 @@
 import os
-
+import traceback
 from fastapi import APIRouter, File, UploadFile, Form
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from store import session_cache
 from session_management import (create_new_session,
                                 apply_transform_and_checkpoint,
-                                update_history)
+                                update_history,
+                                branch_from_commit,
+                                set_head)
 
 import json
 import re
@@ -88,6 +90,25 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
                     "executable_code": "<python pandas code>"
                     }}
 
+                    You can also manage which CSV version you're working on.
+                    If the user says "undo", "redo", or "start over from commit XYZ", respond in `CONTEXT` mode.
+
+                    Use this format:
+
+                    If changing HEAD:
+                    {{
+                    "mode": "CONTEXT",
+                    "action": "checkout",
+                    "target_commit_id": "<commit_id>"
+                    }}
+
+                    If creating a new branch from older commit:
+                    {{
+                    "mode": "CONTEXT",
+                    "action": "branch",
+                    "target_commit_id": "<commit_id>"
+                    }}
+
                     Return ONLY valid JSON.
                 """
 
@@ -104,11 +125,15 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
         elif parsed["mode"] == "CODE":
             # handle code response
             return handle_code_response(session_id, session, query, parsed, df)
+        elif parsed["mode"] == "CONTEXT":
+            return handle_context_change(session_id, session, parsed)
         else:
             # invalid LLM response
             pass
 
     except Exception as e:
+        traceback.print_exc()
+        print(e)
         return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
 
 def handle_code_response(session_id, session, query, parsed, df):
@@ -148,6 +173,9 @@ def handle_code_response(session_id, session, query, parsed, df):
             })
 
         except Exception as exec_err:
+            traceback.print_exc()
+            print(exec_err)
+            
             step = {
                 "query": query,
                 "mode": "CODE",
@@ -169,27 +197,64 @@ def handle_code_response(session_id, session, query, parsed, df):
             }, status_code=500)
 
 def handle_chat_response(session_id, session, query, parsed):
-    # return the chat response
-    # save the conversation
-    llm_response_text = parsed["response"]
+    try:
+        llm_response_text = parsed["response"]
 
-    step = {
-                "query": query,
-                "mode": "CHAT",
-                "response": llm_response_text,
-                "key_steps": None,
-                "code": None,
-                "success": True,
-                "error": None
-            }
-    
-    _ = update_history(session, step)
+        step = {
+                    "query": query,
+                    "mode": "CHAT",
+                    "response": llm_response_text,
+                    "key_steps": None,
+                    "code": None,
+                    "success": True,
+                    "error": None
+                }
+        
+        _ = update_history(session, step)
 
-    return JSONResponse(content={
+        return JSONResponse(content={
+                    "success": True,
+                    "mode": "CHAT",
+                    "response": llm_response_text,
+                    "code": None,
+                    "key_steps": None,
+                    "head": None
+                })
+    except Exception as e:
+        traceback.print_exc()
+        print(e)
+
+def handle_context_change(session_id, session, parsed):
+    try:
+        action = parsed.get("action")
+        commit_id = parsed.get("target_commit_id")
+
+        if action == "checkout":
+            updated_session = set_head(session, commit_id)
+            session_cache[session_id] = updated_session
+            return JSONResponse(content={
                 "success": True,
-                "mode": "CHAT",
-                "response": llm_response_text,
-                "code": None,
-                "key_steps": None,
-                "head": None
+                "mode": "CONTEXT",
+                "action": "checkout",
+                "message": f"HEAD moved to commit {commit_id}"
             })
+
+        elif action == "branch":
+            updated_session = branch_from_commit(session, commit_id)
+            session_cache[session_id] = updated_session
+            return JSONResponse(content={
+                "success": True,
+                "mode": "CONTEXT",
+                "action": "branch",
+                "new_head": updated_session["head"],
+                "message": f"Branched from commit {commit_id}"
+            })
+
+        return JSONResponse(content={
+            "success": False,
+            "mode": "CONTEXT",
+            "error": "Invalid context action"
+        }, status_code=400)
+    except Exception as e:
+        traceback.print_exc()
+        print(e)
