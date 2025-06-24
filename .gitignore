@@ -45,4 +45,4 @@ build/
 .pytest_cache/
 
 .env
-backend/temp_sessions/
+backend/session_data/
