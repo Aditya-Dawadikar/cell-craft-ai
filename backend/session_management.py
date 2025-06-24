@@ -118,7 +118,7 @@ def apply_transform_and_checkpoint(session, df: pd.DataFrame, step: dict):
     session_store[session_id] = session
     save_session_store(session_store)
 
-    return session
+    return session, commit_record
 
 def update_history(session, step):
     session_id = session["session_id"]

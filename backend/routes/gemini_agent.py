@@ -159,7 +159,7 @@ def handle_code_response(session_id, session, query, parsed, df):
             }
 
             # Save updated session data + checkpoint
-            updated_session = apply_transform_and_checkpoint(session, df, step)
+            updated_session, commit_data = apply_transform_and_checkpoint(session, df, step)
             session_cache[session_id] = updated_session
 
             head_preview = df.head(5).to_dict(orient="records") if not df.empty else []
@@ -169,7 +169,12 @@ def handle_code_response(session_id, session, query, parsed, df):
                 "response": None,
                 "code": code,
                 "key_steps": key_steps,
-                "head": head_preview
+                "df_head": head_preview,
+                "commit_data": {
+                    "commit_id": commit_data["commit_id"],
+                    "parent_id": commit_data["parent_commit"],
+                    "timestamp": commit_data["timestamp"]
+                }
             })
 
         except Exception as exec_err:
@@ -185,7 +190,7 @@ def handle_code_response(session_id, session, query, parsed, df):
                 "success": False,
                 "error": str(exec_err)
             }
-            _ = apply_transform_and_checkpoint(session, df, step)
+            _,_= apply_transform_and_checkpoint(session, df, step)
 
             return JSONResponse(content={
                 "success": False,
