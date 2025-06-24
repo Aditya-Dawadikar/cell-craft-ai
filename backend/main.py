@@ -5,6 +5,7 @@ import json
 import dotenv
 from store import session_cache
 from routes import gemini_agent
+from routes import version_history
 
 dotenv.load_dotenv()
 
@@ -23,6 +24,7 @@ SESSION_STORE_FILE = os.path.join(SESSION_ROOT, "session_store.json")
 SESSION_FILES_DIR = os.path.join(SESSION_ROOT, "session_files")
 
 app.include_router(gemini_agent.router)
+app.include_router(version_history.router)
 
 
 def save_sessions():

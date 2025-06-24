@@ -1,7 +1,7 @@
 import os
 import traceback
-from fastapi import APIRouter, File, UploadFile, Form
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, File, UploadFile, Form, Query
+from fastapi.responses import JSONResponse, FileResponse
 from uuid import uuid4
 from store import session_cache
 from session_management import (create_new_session,
@@ -136,6 +136,21 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
         print(e)
         return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
 
+@router.get("/download_csv")
+def download_csv(session_id: str = Query(...), commit_id: str = Query(...)):
+    session = session_cache.get(session_id)
+    if not session:
+        return JSONResponse(status_code=404, content={"error": "Invalid session ID"})
+
+    session_dir = session["session_dir"]
+    file_name = f"{commit_id}.csv"
+    file_path = os.path.join(session_dir, file_name)
+
+    if not os.path.exists(file_path):
+        return JSONResponse(status_code=404, content={"error": "Commit file not found"})
+
+    return FileResponse(path=file_path, filename=file_name, media_type="text/csv")
+
 def handle_code_response(session_id, session, query, parsed, df):
         key_steps = parsed["key_steps"]
         code = parsed["executable_code"]
@@ -159,7 +174,7 @@ def handle_code_response(session_id, session, query, parsed, df):
             }
 
             # Save updated session data + checkpoint
-            updated_session = apply_transform_and_checkpoint(session, df, step)
+            updated_session, commit_data = apply_transform_and_checkpoint(session, df, step)
             session_cache[session_id] = updated_session
 
             head_preview = df.head(5).to_dict(orient="records") if not df.empty else []
@@ -169,7 +184,12 @@ def handle_code_response(session_id, session, query, parsed, df):
                 "response": None,
                 "code": code,
                 "key_steps": key_steps,
-                "head": head_preview
+                "df_head": head_preview,
+                "commit_data": {
+                    "commit_id": commit_data["commit_id"],
+                    "parent_id": commit_data["parent_commit"],
+                    "timestamp": commit_data["timestamp"]
+                }
             })
 
         except Exception as exec_err:
@@ -185,7 +205,7 @@ def handle_code_response(session_id, session, query, parsed, df):
                 "success": False,
                 "error": str(exec_err)
             }
-            _ = apply_transform_and_checkpoint(session, df, step)
+            _,_= apply_transform_and_checkpoint(session, df, step)
 
             return JSONResponse(content={
                 "success": False,

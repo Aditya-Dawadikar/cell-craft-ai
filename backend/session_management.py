@@ -118,7 +118,7 @@ def apply_transform_and_checkpoint(session, df: pd.DataFrame, step: dict):
     session_store[session_id] = session
     save_session_store(session_store)
 
-    return session
+    return session, commit_record
 
 def update_history(session, step):
     session_id = session["session_id"]
@@ -139,6 +139,7 @@ def update_history(session, step):
 def list_commits(session: dict) -> list:
     with open(session["history_path"], "r") as f:
         history = json.load(f)
+
     return [
         {
             "commit_id": h["commit_id"],
@@ -146,7 +147,7 @@ def list_commits(session: dict) -> list:
             "timestamp": h.get("timestamp"),
             "success": h.get("success", False)
         }
-        for h in history
+        for h in history if h.get("commit_id") != None
     ]
 
 def branch_from_commit(session: dict, target_commit_id: str) -> dict:
