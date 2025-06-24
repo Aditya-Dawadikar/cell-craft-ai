@@ -18,4 +18,10 @@ def get_version_history(session_id:str):
 
     version_history = list_commits(session_data)
 
-    return JSONResponse(version_history)
+    res = {
+        "session_id": session_id,
+        "head": session_data.get("head", None),
+        "commits": version_history
+    }
+
+    return JSONResponse(res)
