@@ -1,0 +1,48 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Environment variable files
+.env
+.env.*
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# FastAPI / Uvicorn logs
+*.log
+
+# Temporary session files
+temp_sessions/
+*.csv
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+
+# Notebook or experiment outputs
+*.ipynb_checkpoints
+
+# Frontend build (if applicable later)
+node_modules/
+dist/
+build/
+
+# Cache
+.cache/
+.pytest_cache/
+
+.env
+backend/temp_sessions/

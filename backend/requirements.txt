@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pandas
+numpy
+google-genai
+python-multipart
+aiofiles
+scikit-learn
+dotenv
