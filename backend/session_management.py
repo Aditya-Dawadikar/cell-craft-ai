@@ -70,3 +70,19 @@ def apply_transform_and_checkpoint(session, df: pd.DataFrame, step: dict):
     save_session_store(session_store)
 
     return session
+
+def update_history(session, step):
+    session_id = session["session_id"]
+
+    # Update history
+    with open(session["history_path"], "r") as f:
+        history = json.load(f)
+    history.append(step)
+    with open(session["history_path"], "w") as f:
+        json.dump(history, f, indent=2)
+    
+    session_store = load_session_store()
+    session_store[session_id] = session
+    save_session_store(session_store)
+
+    return session
