@@ -5,7 +5,8 @@ from fastapi.responses import JSONResponse
 from uuid import uuid4
 from store import session_cache
 from session_management import (create_new_session,
-                                apply_transform_and_checkpoint)
+                                apply_transform_and_checkpoint,
+                                update_history)
 
 import json
 import re
@@ -64,19 +65,31 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
 
         df_preview = df.head(5).to_csv(index=False)
         prompt = f"""
-            You are a data cleaning assistant. The user gave you this preview:
-            {df_preview}
-            Previous steps:
-            {key_step_changelog}
-            
-            User says: "{query}"
+                    You are a data cleaning assistant. The user gave you this preview:
+                    {df_preview}
 
-            Respond in JSON with two fields:
-            - "key_steps": a 1-line summary of what the transformation does
-            - "executable_code": Python Pandas code to perform the transformation
+                    Previous steps:
+                    {key_step_changelog}
 
-            Return ONLY valid JSON. Do not include explanation or any other text.
-        """
+                    User says: "{query}"
+
+                    Respond in JSON.
+
+                    If replying in text only:
+                    {{
+                    "mode": "CHAT",
+                    "response": "<your message>"
+                    }}
+
+                    If applying transformation:
+                    {{
+                    "mode": "CODE",
+                    "key_steps": "<summary>",
+                    "executable_code": "<python pandas code>"
+                    }}
+
+                    Return ONLY valid JSON.
+                """
 
         response = client.models.generate_content(
             model="gemini-2.5-flash", contents=prompt
@@ -85,6 +98,20 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
         cleaned = re.sub(r"^```json|```$", "", response.text.strip(), flags=re.IGNORECASE).strip()
         parsed = json.loads(cleaned)
 
+        if parsed["mode"] == "CHAT":
+            # handle chat response
+            return handle_chat_response(session_id, session, query, parsed)
+        elif parsed["mode"] == "CODE":
+            # handle code response
+            return handle_code_response(session_id, session, query, parsed, df)
+        else:
+            # invalid LLM response
+            pass
+
+    except Exception as e:
+        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
+
+def handle_code_response(session_id, session, query, parsed, df):
         key_steps = parsed["key_steps"]
         code = parsed["executable_code"]
 
@@ -98,6 +125,8 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
 
             step = {
                 "query": query,
+                "mode": "CODE",
+                "response": None,
                 "key_steps": key_steps,
                 "code": code,
                 "success": True,
@@ -111,6 +140,8 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
             head_preview = df.head(5).to_dict(orient="records") if not df.empty else []
             return JSONResponse(content={
                 "success": True,
+                "mode": "CODE",
+                "response": None,
                 "code": code,
                 "key_steps": key_steps,
                 "head": head_preview
@@ -119,6 +150,8 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
         except Exception as exec_err:
             step = {
                 "query": query,
+                "mode": "CODE",
+                "response": None,
                 "key_steps": key_steps,
                 "code": code,
                 "success": False,
@@ -128,10 +161,35 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
 
             return JSONResponse(content={
                 "success": False,
+                "mode": "CODE",
+                "response": None,
                 "error": str(exec_err),
                 "code": code,
                 "key_steps": key_steps
             }, status_code=500)
 
-    except Exception as e:
-        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
+def handle_chat_response(session_id, session, query, parsed):
+    # return the chat response
+    # save the conversation
+    llm_response_text = parsed["response"]
+
+    step = {
+                "query": query,
+                "mode": "CHAT",
+                "response": llm_response_text,
+                "key_steps": None,
+                "code": None,
+                "success": True,
+                "error": None
+            }
+    
+    _ = update_history(session, step)
+
+    return JSONResponse(content={
+                "success": True,
+                "mode": "CHAT",
+                "response": llm_response_text,
+                "code": None,
+                "key_steps": None,
+                "head": None
+            })
