@@ -1,7 +1,7 @@
 import os
 import traceback
-from fastapi import APIRouter, File, UploadFile, Form
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, File, UploadFile, Form, Query
+from fastapi.responses import JSONResponse, FileResponse
 from uuid import uuid4
 from store import session_cache
 from session_management import (create_new_session,
@@ -135,6 +135,21 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
         traceback.print_exc()
         print(e)
         return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
+
+@router.get("/download_csv")
+def download_csv(session_id: str = Query(...), commit_id: str = Query(...)):
+    session = session_cache.get(session_id)
+    if not session:
+        return JSONResponse(status_code=404, content={"error": "Invalid session ID"})
+
+    session_dir = session["session_dir"]
+    file_name = f"{commit_id}.csv"
+    file_path = os.path.join(session_dir, file_name)
+
+    if not os.path.exists(file_path):
+        return JSONResponse(status_code=404, content={"error": "Commit file not found"})
+
+    return FileResponse(path=file_path, filename=file_name, media_type="text/csv")
 
 def handle_code_response(session_id, session, query, parsed, df):
         key_steps = parsed["key_steps"]
