@@ -8,13 +8,17 @@ from session_management import (create_new_session,
                                 apply_transform_and_checkpoint,
                                 update_history,
                                 branch_from_commit,
-                                set_head)
-
+                                set_head,
+                                generate_commit_id)
+import ast
 import json
 import re
 import pandas as pd
 import numpy as np
 import sklearn
+import matplotlib.pyplot as plt
+import seaborn as sns
+import datetime
 
 from google import genai
 
@@ -66,6 +70,7 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
         )
 
         df_preview = df.head(5).to_csv(index=False)
+
         prompt = f"""
                     You are a data cleaning assistant. The user gave you this preview:
                     {df_preview}
@@ -75,9 +80,17 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
 
                     User says: "{query}"
 
-                    Respond in JSON.
+                    You operate in an isolated Python environment. You are allowed to:
+                    - Use ONLY the following libraries: pandas, numpy, matplotlib (as plt), seaborn (as sns)
+                    - Answer only questions about the data provided in the CSV
+                    - Politely decline unrelated questions and suggest asking questions about the dataset
 
-                    If replying in text only:
+                    When visualizing data (using matplotlib/seaborn), DO NOT show or display the plot. Instead, save the chart to a file using `plt.savefig("<filename>")`.
+                    When describing data (using pandas), DO NOT print or display the data. Instead, save the response as markdown or txt file.
+                    
+                    You must respond using one of the following JSON formats:
+
+                    If replying in plain text:
                     {{
                     "mode": "CHAT",
                     "response": "<your message>"
@@ -91,9 +104,7 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
                     }}
 
                     You can also manage which CSV version you're working on.
-                    If the user says "undo", "redo", or "start over from commit XYZ", respond in `CONTEXT` mode.
-
-                    Use this format:
+                    If the user says "undo", "redo", or "start over from commit XYZ", respond in CONTEXT mode.
 
                     If changing HEAD:
                     {{
@@ -102,22 +113,43 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
                     "target_commit_id": "<commit_id>"
                     }}
 
-                    If creating a new branch from older commit:
+                    If creating a new branch from an older commit:
                     {{
                     "mode": "CONTEXT",
                     "action": "branch",
                     "target_commit_id": "<commit_id>"
                     }}
 
+                    IMPORTANT:
+                    - All output must be a single valid JSON object.
+                    - Never include code outside the "executable_code" field.
+                    - Do not attempt to write files to directories other than the current working directory.
+
+                    When saving files like charts or summaries, use the variable commit_dir as the output folder. Example:
+                    plt.savefig(f"{{commit_dir}}/myplot.png")
+                    or
+                    with open(f"{{commit_dir}}/summary.md", "w") as f: f.write(summary)
+
+                    You are provided the DataFrame as a variable named `df`. 
+                    - Do NOT use `pd.read_csv()` or try to load 'df.csv'.
+                    - The DataFrame is already available in memory.
+                    - Any cleaned or transformed result should overwrite the existing `df` variable.
+
                     Return ONLY valid JSON.
                 """
+
 
         response = client.models.generate_content(
             model="gemini-2.5-flash", contents=prompt
         )
 
-        cleaned = re.sub(r"^```json|```$", "", response.text.strip(), flags=re.IGNORECASE).strip()
-        parsed = json.loads(cleaned)
+        response_text = response.candidates[0].content.parts[0].text
+        cleaned = re.sub(r"^```json|```$", "", response_text, flags=re.IGNORECASE).strip()
+
+        fixed = re.sub(r'f"({.*?})"', lambda m: '"' + m.group(1).replace('{', '{{').replace('}', '}}') + '"', cleaned)
+
+        # Safely load the JSON
+        parsed = json.loads(fixed)
 
         if parsed["mode"] == "CHAT":
             # handle chat response
@@ -142,79 +174,115 @@ def download_csv(session_id: str = Query(...), commit_id: str = Query(...)):
     if not session:
         return JSONResponse(status_code=404, content={"error": "Invalid session ID"})
 
-    session_dir = session["session_dir"]
+    session_dir = session.get("session_dir")
+    if not session_dir:
+        return JSONResponse(status_code=500, content={"error": "Session directory missing"})
+
     file_name = f"{commit_id}.csv"
     file_path = os.path.join(session_dir, file_name)
 
-    if not os.path.exists(file_path):
-        return JSONResponse(status_code=404, content={"error": "Commit file not found"})
+    if not os.path.isfile(file_path):
+        return JSONResponse(status_code=404, content={"error": f"CSV file for commit {commit_id} not found"})
 
-    return FileResponse(path=file_path, filename=file_name, media_type="text/csv")
+    return FileResponse(
+        path=file_path,
+        filename=file_name,
+        media_type="text/csv"
+    )
 
 def handle_code_response(session_id, session, query, parsed, df):
-        key_steps = parsed["key_steps"]
-        code = parsed["executable_code"]
+    key_steps = parsed["key_steps"]
+    code = parsed["executable_code"]
 
-        # Prepare execution
-        safe_globals = {"__builtins__": __builtins__, "pd": pd, "np": np, "sklearn": sklearn}
-        local_vars = {"df": df}
+    # Prepare commit ID and folder
+    parent_commit = session.get("head")
+    commit_content = json.dumps(parsed, sort_keys=True)
+    commit_id = generate_commit_id(commit_content)
 
-        try:
-            exec(code, safe_globals, local_vars)
-            df = local_vars["df"]
+    commit_folder = os.path.join(session["session_dir"], commit_id)
+    os.makedirs(commit_folder, exist_ok=True)
 
-            step = {
-                "query": query,
-                "mode": "CODE",
-                "response": None,
-                "key_steps": key_steps,
-                "code": code,
-                "success": True,
-                "error": None
+    # Track files before exec
+    existing_files = set(os.listdir(commit_folder))
+
+    # Globals and locals for exec
+    safe_globals = {
+        "__builtins__": __builtins__,
+        "pd": pd,
+        "np": np,
+        "sklearn": sklearn,
+        "plt": plt,
+        "sns": sns
+    }
+    local_vars = {
+        "df": df,
+        "commit_dir": commit_folder  # LLM will use this for saving files
+    }
+
+    try:
+        exec(code, safe_globals, local_vars)
+
+        new_files = list(set(os.listdir(commit_folder)) - existing_files)
+
+        df = local_vars["df"]
+
+        step = {
+            "query": query,
+            "mode": "CODE",
+            "response": None,
+            "key_steps": key_steps,
+            "code": code,
+            "success": True,
+            "error": None
+        }
+
+        updated_session, commit_data = apply_transform_and_checkpoint(session, df, step, commit_id)
+        session_cache[session_id] = updated_session
+
+        df_head = df.head(5).copy()
+        df_head = df_head.applymap(lambda x: str(x) if isinstance(x, (pd.Timestamp, datetime.datetime)) else x)
+
+        # head_preview = df.head(5).to_dict(orient="records") if not df.empty else []
+
+        return JSONResponse(content={
+            "success": True,
+            "mode": "CODE",
+            "response": None,
+            "code": code,
+            "key_steps": key_steps,
+            "df_head": df_head.to_dict(orient="records"),
+            "generated_files": new_files,
+            "commit_data": {
+                "commit_id": commit_data["commit_id"],
+                "parent_id": commit_data["parent_commit"],
+                "timestamp": commit_data["timestamp"]
             }
+        })
 
-            # Save updated session data + checkpoint
-            updated_session, commit_data = apply_transform_and_checkpoint(session, df, step)
-            session_cache[session_id] = updated_session
+    except Exception as exec_err:
+        traceback.print_exc()
 
-            head_preview = df.head(5).to_dict(orient="records") if not df.empty else []
-            return JSONResponse(content={
-                "success": True,
-                "mode": "CODE",
-                "response": None,
-                "code": code,
-                "key_steps": key_steps,
-                "df_head": head_preview,
-                "commit_data": {
-                    "commit_id": commit_data["commit_id"],
-                    "parent_id": commit_data["parent_commit"],
-                    "timestamp": commit_data["timestamp"]
-                }
-            })
+        step = {
+            "query": query,
+            "mode": "CODE",
+            "response": None,
+            "key_steps": key_steps,
+            "code": code,
+            "success": False,
+            "error": str(exec_err)
+        }
 
-        except Exception as exec_err:
-            traceback.print_exc()
-            print(exec_err)
-            
-            step = {
-                "query": query,
-                "mode": "CODE",
-                "response": None,
-                "key_steps": key_steps,
-                "code": code,
-                "success": False,
-                "error": str(exec_err)
-            }
-            _,_= apply_transform_and_checkpoint(session, df, step)
+        _, _ = apply_transform_and_checkpoint(session, df, step)
 
-            return JSONResponse(content={
-                "success": False,
-                "mode": "CODE",
-                "response": None,
-                "error": str(exec_err),
-                "code": code,
-                "key_steps": key_steps
-            }, status_code=500)
+        return JSONResponse(content={
+            "success": False,
+            "mode": "CODE",
+            "response": None,
+            "error": str(exec_err),
+            "code": code,
+            "key_steps": key_steps
+        }, status_code=500)
+
 
 def handle_chat_response(session_id, session, query, parsed):
     try:

@@ -5,7 +5,7 @@ import pandas as pd
 import hashlib
 import datetime
 import traceback
-from typing import Union
+from typing import Union, Optional
 
 SESSION_ROOT = "session_data"
 SESSION_STORE_FILE = os.path.join(SESSION_ROOT, "session_store.json")
@@ -35,26 +35,30 @@ def save_session_store(store):
     with open(SESSION_STORE_FILE, "w") as f:
         json.dump(store, f, indent=2)
 
-def create_new_session(file_bytes) -> dict:
+def create_new_session(file_bytes: bytes) -> dict:
     try:
         session_id = str(uuid.uuid4())
         session_dir = os.path.join(SESSION_FILES_DIR, session_id)
         os.makedirs(session_dir, exist_ok=True)
 
-        # Generate commit ID for the initial upload
+        # Generate commit ID and create commit-specific folder
         commit_id = generate_commit_id(file_bytes)
-        csv_path = os.path.join(session_dir, f"{commit_id}.csv")
+        commit_dir = os.path.join(session_dir, commit_id)
+        os.makedirs(commit_dir, exist_ok=True)
 
-        # Save the uploaded CSV
+        # Save CSV inside the commit folder
+        csv_path = os.path.join(commit_dir, f"{commit_id}.csv")
         with open(csv_path, "wb") as f:
             f.write(file_bytes)
 
-        # Create initial commit metadata
+        # Initial commit metadata
         initial_commit = {
             "commit_id": commit_id,
             "parent_commit": None,
             "timestamp": datetime.datetime.utcnow().isoformat(),
             "query": "Initial upload",
+            "mode": "CODE",
+            "response": None,
             "key_steps": "Initial file upload",
             "code": None,
             "success": True,
@@ -65,7 +69,6 @@ def create_new_session(file_bytes) -> dict:
         with open(history_path, "w") as f:
             json.dump([initial_commit], f, indent=2)
 
-        # session info
         session_info = {
             "session_id": session_id,
             "head": commit_id,
@@ -82,18 +85,25 @@ def create_new_session(file_bytes) -> dict:
 
     except Exception as e:
         traceback.print_exc()
-        print(f"An error occurred: {e}") 
+        print(f"An error occurred: {e}")
+        return {}
 
-# Save a new checkpoint and update transform history
-def apply_transform_and_checkpoint(session, df: pd.DataFrame, step: dict):
+def apply_transform_and_checkpoint(session, df: pd.DataFrame, step: dict, commit_id: Optional[str] = None):
     session_id = session["session_id"]
     session_dir = os.path.join(SESSION_FILES_DIR, session_id)
 
     parent_commit = session.get("head")
-    commit_content = json.dumps(step, sort_keys=True)
-    commit_id = generate_commit_id(commit_content)
-    
-    new_csv_path = os.path.join(session_dir, f"{commit_id}.csv")
+
+    # Generate new commit ID if not supplied
+    if commit_id is None:
+        commit_content = json.dumps(step, sort_keys=True)
+        commit_id = generate_commit_id(commit_content)
+
+    commit_dir = os.path.join(session_dir, commit_id)
+    os.makedirs(commit_dir, exist_ok=True)
+
+    new_csv_path = os.path.join(commit_dir, f"{commit_id}.csv")
+
     df.to_csv(new_csv_path, index=False)
 
     commit_record = {
@@ -103,7 +113,7 @@ def apply_transform_and_checkpoint(session, df: pd.DataFrame, step: dict):
         **step
     }
 
-    # Update commit history path
+    # Update history
     history_path = session["history_path"]
     with open(history_path, "r") as f:
         history = json.load(f)
@@ -120,21 +130,39 @@ def apply_transform_and_checkpoint(session, df: pd.DataFrame, step: dict):
 
     return session, commit_record
 
-def update_history(session, step):
+def update_history(session, step: dict):
     session_id = session["session_id"]
+    session_dir = session["session_dir"]
+    parent_commit = session.get("head")
 
-    # Update history
+    # Generate new commit ID
+    commit_content = json.dumps(step, sort_keys=True)
+    commit_id = generate_commit_id(commit_content)
+
+    # Add metadata to the step
+    commit_record = {
+        "commit_id": commit_id,
+        "parent_commit": parent_commit,
+        "timestamp": datetime.datetime.utcnow().isoformat(),
+        **step
+    }
+
+    # Append to history
     with open(session["history_path"], "r") as f:
         history = json.load(f)
-    history.append(step)
+    history.append(commit_record)
     with open(session["history_path"], "w") as f:
         json.dump(history, f, indent=2)
-    
+
+    # Update session head
+    session["head"] = commit_id
+
+    # Save session store
     session_store = load_session_store()
     session_store[session_id] = session
     save_session_store(session_store)
 
-    return session
+    return session, commit_record
 
 def list_commits(session: dict) -> list:
     with open(session["history_path"], "r") as f:
@@ -167,10 +195,7 @@ def branch_from_commit(session: dict, target_commit_id: str) -> dict:
     with open(new_csv_path, "wb") as f:
         f.write(csv_bytes)
 
-    new_step = {
-        "commit_id": new_commit_id,
-        "parent_commit": target_commit_id,
-        "timestamp": datetime.datetime.utcnow().isoformat(),
+    branch_step = {
         "query": f"Branched from {target_commit_id}",
         "key_steps": "Branch created",
         "code": None,
@@ -178,10 +203,17 @@ def branch_from_commit(session: dict, target_commit_id: str) -> dict:
         "error": None
     }
 
+    commit_record = {
+        "commit_id": new_commit_id,
+        "parent_commit": target_commit_id,
+        "timestamp": datetime.datetime.utcnow().isoformat(),
+        **branch_step
+    }
+
     # Append to history
     with open(session["history_path"], "r") as f:
         history = json.load(f)
-    history.append(new_step)
+    history.append(commit_record)
     with open(session["history_path"], "w") as f:
         json.dump(history, f, indent=2)
 
