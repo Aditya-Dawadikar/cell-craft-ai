@@ -3,7 +3,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse, FileResponse
 from store import session_cache
 from session_management import list_commits
-
+import posixpath
 
 router = APIRouter()
 
@@ -37,8 +37,16 @@ def list_commit_files(session_id: str = Query(...), commit_id: str = Query(...))
     if not os.path.exists(commit_folder):
         return JSONResponse(status_code=404, content={"error": "Commit folder not found"})
 
-    files = os.listdir(commit_folder)
-    return JSONResponse(content={"commit_id": commit_id, "files": files})
+    static_base_path = os.getenv("SESSION_ROOT", "session_data")
+    
+    static_urls = []
+    for fname in os.listdir(commit_folder):
+        abs_path = os.path.join(commit_folder, fname)
+        rel_path = os.path.relpath(abs_path, start=static_base_path)
+        url_path = posixpath.join("/static", *rel_path.split(os.sep))  # normalize to forward slashes
+        static_urls.append(url_path)
+
+    return JSONResponse(content={"commit_id": commit_id, "files": static_urls})
 
 @router.get("/download_commit_file")
 def download_commit_file(
