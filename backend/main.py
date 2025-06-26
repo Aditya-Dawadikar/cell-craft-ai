@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 import os
 import time
 import json
@@ -22,6 +24,20 @@ app = FastAPI()
 SESSION_ROOT = os.getenv("SESSION_ROOT","session_data")
 SESSION_STORE_FILE = os.path.join(SESSION_ROOT, "session_store.json")
 SESSION_FILES_DIR = os.path.join(SESSION_ROOT, "session_files")
+
+origins = [
+    "http://localhost:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/static", StaticFiles(directory=SESSION_ROOT), name='static')
 
 app.include_router(gemini_agent.router)
 app.include_router(version_history.router)
