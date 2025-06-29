@@ -175,7 +175,7 @@ def list_commits(session: dict) -> list:
             "timestamp": h.get("timestamp"),
             "success": h.get("success", False)
         }
-        for h in history if h.get("commit_id") != None
+        for h in history if h.get("commit_id") != None and h.get("mode") == "CODE"
     ]
 
 def branch_from_commit(session: dict, target_commit_id: str) -> dict:

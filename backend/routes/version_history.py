@@ -63,7 +63,6 @@ def get_commit_file_urls(session, commit_id):
     if not os.path.exists(commit_folder):
         raise Exception({"error": "Commit folder not found"})
 
-
     static_base_path = os.getenv("SESSION_ROOT", "session_data")
     
     static_urls = []
@@ -74,6 +73,25 @@ def get_commit_file_urls(session, commit_id):
         abs_path = os.path.join(commit_folder, fname)
         rel_path = os.path.relpath(abs_path, start=static_base_path)
         url_path = posixpath.join("/static", *rel_path.split(os.sep))  # normalize to forward slashes
-        static_urls.append(url_path)
+
+        file_type = ""
+
+        ext = url_path.split('.')[-1]
+        if ext == 'csv':
+            file_type = "dataframe"
+        elif ext in ['png','jpg','jpeg']:
+            file_type = 'chart'
+        elif ext == 'md':
+            file_type = "readme"
+        else:
+            file_type = ext
+
+        url_object = {
+            "type": file_type,
+            "title": None,
+            "url": url_path 
+        }
+
+        static_urls.append(url_object)
     
     return static_urls
