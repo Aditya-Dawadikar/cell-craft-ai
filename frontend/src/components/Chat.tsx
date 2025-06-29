@@ -197,126 +197,132 @@ const Chat = () => {
                 m: 1,
             }}
         >
-            <Box
-                sx={{
-                    flexGrow: 1,
-                    overflowY: 'auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1,
-                    px: 1,
-                    pb: 2,
-                }}
-            >
-
-                {messages.map((msg, idx) => (
+            {
+                session ? <>
                     <Box
-                        key={idx}
                         sx={{
+                            flexGrow: 1,
+                            overflowY: 'auto',
                             display: 'flex',
                             flexDirection: 'column',
-                            alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                            alignItems: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                            gap: 1,
+                            px: 1,
+                            pb: 2,
                         }}
                     >
-                        {/* Message Bubble */}
-                        <Box
-                            sx={{
-                                bgcolor: msg.sender === 'user' ? '#1976d2' : '#f1f1f1',
-                                color: msg.sender === 'user' ? 'white' : 'black',
-                                px: 2,
-                                py: 1,
-                                borderRadius: 2,
-                                maxWidth: '75%',
-                            }}
-                        >
-                            <Typography variant="body2">{msg.text}</Typography>
-                        </Box>
 
-                        {/* User uploaded file */}
-                        {msg.uploadedFile && (
+                        {messages.map((msg, idx) => (
                             <Box
-                                mt={0.5}
-                                p={1}
-                                width={160}
-                                bgcolor="#e0f7fa"
-                                borderRadius={1}
-                                sx={{ color: 'black', textAlign: 'right' }}
+                                key={idx}
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                                    alignItems: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                                }}
                             >
-                                <Typography variant="caption" fontWeight="bold">
-                                    {msg.uploadedFile.name}
-                                </Typography>
-                            </Box>
-                        )}
+                                {/* Message Bubble */}
+                                <Box
+                                    sx={{
+                                        bgcolor: msg.sender === 'user' ? '#1976d2' : '#f1f1f1',
+                                        color: msg.sender === 'user' ? 'white' : 'black',
+                                        px: 2,
+                                        py: 1,
+                                        borderRadius: 2,
+                                        maxWidth: '75%',
+                                    }}
+                                >
+                                    <Typography variant="body2">{msg.text}</Typography>
+                                </Box>
 
-                        {/* Bot generated files */}
-                        {
-                            msg.commitData ? <Box
-                                bgcolor="#54ffc9"
-                                p={1}
-                                m={1}
-                                borderRadius={1}
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => {
-                                    if (msg.commitData) {
-                                        dispatch(setSelectedCommit(msg.commitData));
-                                    }
-                                }}>
-                                {msg.commitData ? <>
-                                    <Typography variant="caption" fontWeight="bold" >
-                                        Commit ID: <span style={{ background: '#fdff32', padding: '1px 4px', borderRadius: '2px' }}>{msg.commitData.commit_id}</span>
-                                    </Typography>
-                                </> : <></>}
-                                {msg.generatedFiles?.length > 0 &&
-                                    msg.generatedFiles.map((file, fileIdx) => (
-                                        <Box
-                                            key={fileIdx}
-                                            mt={0.5}
-                                            p={1}
-                                            width={180}
-                                            bgcolor="#fef5d3"
-                                            borderRadius={1}
-                                            sx={{ color: 'black', textAlign: 'left' }}
-                                        >
-                                            <Typography variant="caption"
-                                                sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                                                {file.title}
+                                {/* User uploaded file */}
+                                {msg.uploadedFile && (
+                                    <Box
+                                        mt={0.5}
+                                        p={1}
+                                        width={160}
+                                        bgcolor="#e0f7fa"
+                                        borderRadius={1}
+                                        sx={{ color: 'black', textAlign: 'right' }}
+                                    >
+                                        <Typography variant="caption" fontWeight="bold">
+                                            {msg.uploadedFile.name}
+                                        </Typography>
+                                    </Box>
+                                )}
+
+                                {/* Bot generated files */}
+                                {
+                                    msg.commitData ? <Box
+                                        bgcolor="#54ffc9"
+                                        p={1}
+                                        m={1}
+                                        borderRadius={1}
+                                        sx={{ cursor: "pointer" }}
+                                        onClick={() => {
+                                            if (msg.commitData) {
+                                                dispatch(setSelectedCommit(msg.commitData));
+                                            }
+                                        }}>
+                                        {msg.commitData ? <>
+                                            <Typography variant="caption" fontWeight="bold" >
+                                                Commit ID: <span style={{ background: '#fdff32', padding: '1px 4px', borderRadius: '2px' }}>{msg.commitData.commit_id}</span>
                                             </Typography>
-                                        </Box>
-                                    ))}
-                            </Box> : <></>
+                                        </> : <></>}
+                                        {msg.generatedFiles?.length > 0 &&
+                                            msg.generatedFiles.map((file, fileIdx) => (
+                                                <Box
+                                                    key={fileIdx}
+                                                    mt={0.5}
+                                                    p={1}
+                                                    width={180}
+                                                    bgcolor="#fef5d3"
+                                                    borderRadius={1}
+                                                    sx={{ color: 'black', textAlign: 'left' }}
+                                                >
+                                                    <Typography variant="caption"
+                                                        sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                                        {file.title}
+                                                    </Typography>
+                                                </Box>
+                                            ))}
+                                    </Box> : <></>
+                                }
+
+                            </Box>
+                        ))}
+                        <div ref={bottomRef} />
+                        {
+                            isLoading ? <LinearProgress /> : <></>
                         }
-
                     </Box>
-                ))}
-                <div ref={bottomRef} />
-                {
-                    isLoading ? <LinearProgress /> : <></>
-                }
-            </Box>
-            <Divider />
+                    <Divider />
 
-            <Box
-                sx={{
-                    display: 'flex',
-                    gap: 1,
-                    mt: 1,
-                }}
-            >
-                <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Type a message..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSend()
-                    }}
-                />
-                <IconButton color="primary" onClick={handleSend}>
-                    <SendIcon />
-                </IconButton>
-            </Box>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            gap: 1,
+                            mt: 1,
+                        }}
+                    >
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Type a message..."
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSend()
+                            }}
+                        />
+                        <IconButton color="primary" onClick={handleSend}>
+                            <SendIcon />
+                        </IconButton>
+                    </Box>
+                </> : <>
+                    Select a Project to start conversation.
+                </>
+            }
         </Paper>
     )
 }

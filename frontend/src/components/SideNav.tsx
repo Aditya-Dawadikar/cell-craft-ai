@@ -59,6 +59,11 @@ const SideNav = () => {
                 session_name: response.session_name
             }))
 
+            handleSelectSession({
+                session_id: response.session_id,
+                session_name: response.session_name
+            })
+
             setDialogOpen(false)
             setSessionName("")
             setSelectedFile(null)
