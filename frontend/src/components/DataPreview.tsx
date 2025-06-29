@@ -8,6 +8,7 @@ import type { RootState } from '../store/index'
 import { Autocomplete, Typography, TextField } from '@mui/material'
 import { getCommitFiles } from '../services/commit'
 import { setSelectedCommit } from '../slices/commitSlice'
+import type { Commit } from '../interfaces/CommitInterfance'
 
 type Panel =
     | { type: 'dataframe'; title: string; url: string }
@@ -23,6 +24,7 @@ const DataPreview = () => {
     const commitList = useSelector((state: RootState) => state.commit.commits) ?? []
     const commitHead = useSelector((state: RootState) => state.commit.head)
     const selectedCommit = useSelector((state: RootState) => state.commit.selectedCommit)
+
     const sessionIdFromStore = useSelector((state: RootState) => state.chat.session_id)
 
     const [panels, setPanels] = useState<Panel[]>([])
@@ -39,10 +41,15 @@ const DataPreview = () => {
         setPanels([...data.files])
     }
 
-    const handleSelectCommit = (commit_id: string) => {
-        console.log(commit_id)
-        dispatch(setSelectedCommit(commit_id))
-        handleFetchFiles(commit_id)
+    const handleSelectCommit = (commit: Commit | null) => {
+        if (commit != null) {
+            dispatch(setSelectedCommit(commit))
+            handleFetchFiles(commit.commit_id)
+        } else {
+            dispatch(setSelectedCommit(null))
+            // clear the display too
+            setPanels([])
+        }
     }
 
     return (
@@ -69,35 +76,39 @@ const DataPreview = () => {
                     getOptionLabel={(commit) =>
                         `${commit.commit_id}: ${truncate(commit.key_steps)}`
                     }
-                    renderOption={(props, option) => (
-                        <li {...props}>
-                            <Tooltip
-                                title={option.key_steps}
-                                componentsProps={{
-                                    tooltip: {
-                                        sx: {
-                                            fontSize: '1rem', // or '20px'
-                                            maxWidth: 400,
+                    renderOption={(props, option) => {
+                        const { key, ...rest } = props
+                        return (
+                            <Box key={key} component='li' {...rest}>
+                                <Tooltip
+                                    title={option.key_steps}
+                                    componentsProps={{
+                                        tooltip: {
+                                            sx: {
+                                                fontSize: '1rem', // or '20px'
+                                                maxWidth: 400,
+                                            }
                                         }
-                                    }
-                                }}
-                                arrow>
-                                <span>
-                                    {option.timestamp} <b>{option.commit_id}</b>
-                                    <br />
-                                    <b>Commit: </b>{truncate(option.key_steps)}
+                                    }}
+                                    placement="left"
+                                    arrow>
+                                    <span>
+                                        {option.timestamp} <b>{option.commit_id}</b>
+                                        <br />
+                                        <b>Commit: </b>{truncate(option.key_steps)}
 
-                                </span>
-                            </Tooltip>
-                        </li>
-                    )}
-                    value={selectedCommit}
+                                    </span>
+                                </Tooltip>
+                            </Box>
+                        )
+                    }}
+                    value={commitList.find(c => c.commit_id === selectedCommit?.commit_id) ?? null}
                     onChange={(event, newValue) => {
-                        handleSelectCommit(newValue?.commit_id ?? '')
+                        handleSelectCommit(newValue)
                     }}
                     renderInput={(params) => <TextField {...params} label="Search Commits" />}
                     isOptionEqualToValue={(option, value) =>
-                        option.commit_id === value.commit_id
+                        option.commit_id === value?.commit_id
                     }
                 />
 
@@ -108,7 +119,7 @@ const DataPreview = () => {
                 {
                     panels.length > 0 ?
                         <PanelGrid panels={panels} /> :
-                        <><Typography>No Files to Show for Selected Commit</Typography></>
+                        <><Typography>No Files to Show. Select a commit.</Typography></>
                 }
             </Box>
 

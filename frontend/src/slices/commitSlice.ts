@@ -10,22 +10,22 @@ const initialState: CommitHistoryState = {
 }
 
 const commitSlice = createSlice({
-  name: 'commit_history',
+    name: 'commit_history',
     initialState,
     reducers: {
-        addCommit: (state, action: PayloadAction<any>)=>{
+        addCommit: (state, action: PayloadAction<any>) => {
 
         },
-        removeCommit: (state, action: PayloadAction<any>)=>{
+        removeCommit: (state, action: PayloadAction<any>) => {
 
         },
-        setHead: (state, action: PayloadAction<any>)=>{
+        setHead: (state, action: PayloadAction<any>) => {
 
         },
-        setSelectedCommit: (state, action: PayloadAction<any>)=>{
-            state.selectedCommit = action.payload.selectedCommit
+        setSelectedCommit: (state, action: PayloadAction<any>) => {
+            state.selectedCommit = action.payload
         },
-        setCommitHistory: (state, action: PayloadAction<any>)=>{
+        setCommitHistory: (state, action: PayloadAction<any>) => {
             state.head = action.payload.head
             state.commits = action.payload.commits
             state.selectedCommit = action.payload.head
@@ -33,5 +33,5 @@ const commitSlice = createSlice({
     }
 })
 
-export const {addCommit, removeCommit, setHead, setCommitHistory, setSelectedCommit} = commitSlice.actions
+export const { addCommit, removeCommit, setHead, setCommitHistory, setSelectedCommit } = commitSlice.actions
 export default commitSlice.reducer
