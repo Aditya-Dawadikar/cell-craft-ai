@@ -232,7 +232,7 @@ def branch_from_commit(session: dict, target_commit_id: str) -> dict:
 def set_head(session: dict, commit_id: str) -> dict:
     session_id = session["session_id"]
     session_dir = session["session_dir"]
-    csv_path = os.path.join(session_dir, f"{commit_id}.csv")
+    csv_path = os.path.join(session_dir, f"{commit_id}\{commit_id}.csv")
 
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"CSV for commit {commit_id} not found")
