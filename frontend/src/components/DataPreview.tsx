@@ -138,7 +138,7 @@ const DataPreview = () => {
             <Collapse in={drawerOpen} orientation="vertical" unmountOnExit>
                 <Box
                     sx={{
-                        height: '400px',
+                        height: '50vh',
                         bgcolor: '#f5f5f5',
                         borderTop: '1px solid #ddd',
                         borderTopLeftRadius: 12,

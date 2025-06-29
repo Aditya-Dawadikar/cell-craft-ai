@@ -236,8 +236,8 @@ const Chat = () => {
                                     }
                                 }}>
                                 {msg.commitData ? <>
-                                    <Typography variant="caption" fontWeight="bold">
-                                        Commit: {msg.commitData.commit_id}
+                                    <Typography variant="caption" fontWeight="bold" >
+                                        Commit ID: <span style={{ background: '#fdff32', padding: '1px 4px', borderRadius: '2px' }}>{msg.commitData.commit_id}</span>
                                     </Typography>
                                 </> : <></>}
                                 {msg.generatedFiles?.length > 0 &&
