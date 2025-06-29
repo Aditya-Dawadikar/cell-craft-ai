@@ -173,6 +173,7 @@ def list_commits(session: dict) -> list:
             "commit_id": h["commit_id"],
             "key_steps": h["key_steps"],
             "timestamp": h.get("timestamp"),
+            "parent_id": h.get("parent_commit"),
             "success": h.get("success", False)
         }
         for h in history if h.get("commit_id") != None and h.get("mode") == "CODE"
