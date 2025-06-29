@@ -16,3 +16,13 @@ export const sendMessage = async (session_id: string, msg: string): Promise<any>
     return await response.json()
 
 }
+
+export const loadConversationHistory = async (session_id: string): Promise<any> =>{
+    const response = await fetch(`http://localhost:8000/chat-history/?session_id=${session_id}`)
+
+    if (!response.ok){
+        throw new Error("Failed to load chat history")
+    }
+
+    return await response.json()
+}
