@@ -13,12 +13,23 @@ import { useDispatch, useSelector } from 'react-redux'
 import type { RootState } from '../store/index'
 import { addMessage } from '../slices/chatSlice'
 import type { ChatMessage } from '../interfaces/ChatMessageInterface'
-import { setCommitHistory } from '../slices/commitSlice'
+import { setCommitHistory, setSelectedCommit } from '../slices/commitSlice'
 import { getVersionHistory } from '../services/commit'
 
 interface Message {
     text: string
-    sender: 'user' | 'bot'
+    sender: 'user' | 'bot',
+    uploadedFile?: File;
+    generatedFiles?: {
+        title: string
+        url: string
+        type?: string
+    }[],
+    commitData?: {
+        commit_id: string,
+        parent_id: string,
+        timestamp: string
+    }
 }
 
 const Chat = () => {
@@ -62,27 +73,46 @@ const Chat = () => {
     }
 
     const handleSend = async () => {
-        if (!input.trim()) return
 
-        setMessages([...messages, { text: input, sender: 'user' }])
+        input.trim()
+
+        const newMsg: Message = {
+            text: input,
+            sender: 'user',
+            uploadedFile: attachedFile || undefined,
+        };
+
+        setMessages([...messages, newMsg]);
 
         dispatch(addMessage({
             text: input,
-            sender: 'user'
-        } as ChatMessage))
+            sender: 'user',
+        } as ChatMessage));
 
         setInput('')
+        clearAttachment();
 
         try {
             setIsLoading(true)
             const result = await sendMessage(sessionIdFromStore, input)
 
-            setMessages((prev) => [...prev, { text: result.response, sender: 'bot' }])
+            setMessages((prev) => [
+                ...prev,
+                {
+                    text: result.response,
+                    sender: 'bot',
+                    generatedFiles: result.generated_files,
+                    commitData: result.commit_data
+                },
+            ])
 
             dispatch(addMessage({
                 text: result.response,
                 sender: 'bot'
             } as ChatMessage))
+
+            await pollHistory()
+            dispatch(setSelectedCommit(result.commit_data))
 
             let generated_files = result.generated_files
 
@@ -91,6 +121,8 @@ const Chat = () => {
             setIsLoading(false)
         } catch (err) {
             console.log(err)
+            setIsLoading(false)
+            setMessages((prev) => [...prev, { text: "Some Error Occured, Try again", sender: 'bot' }])
         }
 
     }
@@ -99,25 +131,26 @@ const Chat = () => {
 
     }
 
-    useEffect(() => {
-        const pollHistory = async () => {
-            try {
-                const data = await getVersionHistory(sessionIdFromStore)
+    const pollHistory = async () => {
+        try {
+            const data = await getVersionHistory(sessionIdFromStore)
 
-                setVersionHistory({
-                    head: data.head || null,
-                    commits: data.commits || []
-                })
+            setVersionHistory({
+                head: data.head || null,
+                commits: data.commits || []
+            })
 
-                dispatch(setCommitHistory({
-                    head: data.head || null,
-                    commits: data.commits || []
-                }))
+            dispatch(setCommitHistory({
+                head: data.head || null,
+                commits: data.commits || []
+            }))
 
-            } catch (err) {
-                console.log("Error fetching version history:", err)
-            }
+        } catch (err) {
+            console.log("Error fetching version history:", err)
         }
+    }
+
+    useEffect(() => {
 
         pollHistory()
 
@@ -149,20 +182,85 @@ const Chat = () => {
                     pb: 2,
                 }}
             >
+
                 {messages.map((msg, idx) => (
                     <Box
                         key={idx}
                         sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
                             alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                            bgcolor: msg.sender === 'user' ? '#1976d2' : '#f1f1f1',
-                            color: msg.sender === 'user' ? 'white' : 'black',
-                            px: 2,
-                            py: 1,
-                            borderRadius: 2,
-                            maxWidth: '75%',
+                            alignItems: msg.sender === 'user' ? 'flex-end' : 'flex-start',
                         }}
                     >
-                        <Typography variant="body2">{msg.text}</Typography>
+                        {/* Message Bubble */}
+                        <Box
+                            sx={{
+                                bgcolor: msg.sender === 'user' ? '#1976d2' : '#f1f1f1',
+                                color: msg.sender === 'user' ? 'white' : 'black',
+                                px: 2,
+                                py: 1,
+                                borderRadius: 2,
+                                maxWidth: '75%',
+                            }}
+                        >
+                            <Typography variant="body2">{msg.text}</Typography>
+                        </Box>
+
+                        {/* User uploaded file */}
+                        {msg.uploadedFile && (
+                            <Box
+                                mt={0.5}
+                                p={1}
+                                width={160}
+                                bgcolor="#e0f7fa"
+                                borderRadius={1}
+                                sx={{ color: 'black', textAlign: 'right' }}
+                            >
+                                <Typography variant="caption" fontWeight="bold">
+                                    {msg.uploadedFile.name}
+                                </Typography>
+                            </Box>
+                        )}
+
+                        {/* Bot generated files */}
+                        {
+                            msg.commitData ? <Box
+                                bgcolor="#54ffc9"
+                                p={1}
+                                m={1}
+                                borderRadius={1}
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => {
+                                    if (msg.commitData) {
+                                        dispatch(setSelectedCommit(msg.commitData));
+                                    }
+                                }}>
+                                {msg.commitData ? <>
+                                    <Typography variant="caption" fontWeight="bold">
+                                        Commit: {msg.commitData.commit_id}
+                                    </Typography>
+                                </> : <></>}
+                                {msg.generatedFiles?.length > 0 &&
+                                    msg.generatedFiles.map((file, fileIdx) => (
+                                        <Box
+                                            key={fileIdx}
+                                            mt={0.5}
+                                            p={1}
+                                            width={180}
+                                            bgcolor="#fef5d3"
+                                            borderRadius={1}
+                                            sx={{ color: 'black', textAlign: 'left' }}
+                                        >
+                                            <Typography variant="caption"
+                                                sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                                {file.title}
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                            </Box> : <></>
+                        }
+
                     </Box>
                 ))}
                 {
@@ -181,12 +279,12 @@ const Chat = () => {
             {/* Preview */}
             {attachedFile && (
                 <Box mt={1} p={1} bgcolor="#f0f0f0" borderRadius={2}>
-                    <div style={{ display: "flex" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <Typography variant="body2" fontWeight="bold">
                             Attached: {attachedFile.name}
                         </Typography>
                         <IconButton onClick={clearAttachment} size="small">
-                            <ClearIcon />
+                            <ClearIcon style={{ height: "12", width: "12" }} />
                         </IconButton>
                     </div>
                 </Box>
