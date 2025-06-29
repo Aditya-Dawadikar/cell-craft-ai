@@ -86,9 +86,11 @@ def get_commit_file_urls(session, commit_id):
         else:
             file_type = ext
 
+        file_name = url_path.split('/')[-1]
+
         url_object = {
             "type": file_type,
-            "title": None,
+            "title": file_name,
             "url": url_path 
         }
 
