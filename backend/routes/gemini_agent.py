@@ -86,9 +86,12 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
                     - Answer only questions about the data provided in the CSV
                     - Politely decline unrelated questions and suggest asking questions about the dataset
 
+                    Always write code's output to a markdown or a readme file and save it
                     When visualizing data (using matplotlib/seaborn), DO NOT show or display the plot. Instead, save the chart to a file using `plt.savefig("<filename>")`.
                     When describing data (using pandas), DO NOT print or display the data. Instead, save the response as markdown or txt file.
                     
+                    always generate some text based code output for manual verification
+
                     You must respond using one of the following JSON formats:
 
                     If replying in plain text:
@@ -237,6 +240,7 @@ def handle_code_response(session_id, session, query, parsed, df):
             "response": response,
             "key_steps": key_steps,
             "code": code,
+            "generated_files": new_files,
             "success": True,
             "error": None
         }

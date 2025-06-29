@@ -19,6 +19,13 @@ def get_version_history(session_id:str):
 
     version_history = list_commits(session_data)
 
+    session = session_cache.get(session_id)
+    if not session:
+        return JSONResponse(status_code=404, content={"error": "Invalid session ID"})
+
+    for version in version_history:
+        version["generated_files"] = get_commit_file_urls(session, version.get("commit_id"))
+
     res = {
         "session_id": session_id,
         "head": session_data.get("head", None),
