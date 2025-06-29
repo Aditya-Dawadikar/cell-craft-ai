@@ -37,6 +37,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# static_app = FastAPI()
+# static_app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# static_app.mount("/", StaticFiles(directory=SESSION_ROOT), name='static')
+# app.mount("/static", static_app)
+
 app.mount("/static", StaticFiles(directory=SESSION_ROOT), name='static')
 
 app.include_router(gemini_agent.router)

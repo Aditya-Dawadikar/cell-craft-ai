@@ -1,7 +1,9 @@
-import { Grid, Paper, Typography, Box } from '@mui/material'
+import { Grid, Paper, Typography, Box, Stack, IconButton } from '@mui/material'
 import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Papa from 'papaparse'
+import DownloadIcon from '@mui/icons-material/Download';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
 
 type Panel =
     | { type: 'dataframe'; title: string; url: string }
@@ -12,27 +14,63 @@ interface Props {
     panels: Panel[]
 }
 
+
+const base_url = "http://localhost:8000"
+
 const PanelGrid = ({ panels }: Props) => {
+
+
+    const handleDownload = async (url: string, filename: string) => {
+        try {
+            const response = await fetch(url)
+            const blob = await response.blob()
+
+            const blobUrl = window.URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = blobUrl
+            link.download = filename
+            document.body.appendChild(link)
+            link.click()
+
+            // Cleanup
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(blobUrl)
+        } catch (err) {
+            console.error('Download failed:', err)
+        }
+    }
+
     return (
         <Grid container spacing={2}>
             {panels.map((panel, index) => (
                 <Grid item xs={12} sm={6} md={4} key={index}>
                     <Paper elevation={3} sx={{ m: 1, height: '100%' }}>
-                        <div style={{padding:"1em"}}>
-                            <Typography variant="h6" gutterBottom>
-                                {panel.title}
-                            </Typography>
+                        <div style={{ padding: "0.5em" }}>
+
+                            <Stack direction="row"
+                                alignItems="center"
+                                justifyContent="space-between">
+                                <Typography gutterBottom>
+                                    {panel.title}
+                                </Typography>
+                                <Stack direction="row"
+                                    sx={{
+                                        justifyContent: 'flex-end'
+                                    }}>
+
+                                    <IconButton>
+                                        <FullscreenIcon />
+                                    </IconButton>
+                                    <IconButton onClick={() => { handleDownload(base_url + panel.url, panel.title) }}>
+                                        <DownloadIcon />
+                                    </IconButton>
+                                </Stack>
+                            </Stack>
+
 
                             {panel.type === 'dataframe' && <CSVPreview url={panel.url} />}
                             {panel.type === 'readme' && <MarkdownFromUrl url={panel.url} />}
-                            {panel.type === 'chart' && (
-                                <Box
-                                    component="img"
-                                    src={panel.url}
-                                    alt={panel.title}
-                                    sx={{ width: '100%', maxHeight: 300, objectFit: 'contain' }}
-                                />
-                            )}
+                            {panel.type === 'chart' && <ImageFromUrl url={panel.url} title={panel.title} />}
                         </div>
                     </Paper>
                 </Grid>
@@ -46,7 +84,7 @@ const CSVPreview = ({ url }: { url: string }) => {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        fetch(url)
+        fetch(base_url + url)
             .then((res) => res.text())
             .then((csv) => {
                 const result = Papa.parse<string[]>(csv, { skipEmptyLines: true })
@@ -98,7 +136,7 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
     const [markdown, setMarkdown] = useState('Loading...')
 
     useEffect(() => {
-        fetch(url)
+        fetch(base_url + url)
             .then((res) => res.text())
             .then(setMarkdown)
             .catch(() => setMarkdown('Failed to load markdown'))
@@ -106,12 +144,25 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
 
     return (
         <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
-            <div style={{background:"#ffeede", padding: "1em"}}>
+            <div style={{ background: "#ffeede", padding: "1em" }}>
                 <ReactMarkdown>{markdown}</ReactMarkdown>
             </div>
         </Box>
     )
 }
 
+const ImageFromUrl = ({ url, title }: { url: string, title: string }) => {
+    return (<Box
+        component="img"
+        src={base_url + url}
+        alt={title}
+        sx={{
+            width: '100%',
+            maxHeight: 300,
+            objectFit: 'contain',
+            border: "solid 1px #ccc"
+        }}
+    />)
+}
 
 export default PanelGrid
