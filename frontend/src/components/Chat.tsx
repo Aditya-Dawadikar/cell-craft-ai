@@ -112,11 +112,10 @@ const Chat = () => {
             } as ChatMessage))
 
             await pollHistory()
-            dispatch(setSelectedCommit(result.commit_data))
 
-            let generated_files = result.generated_files
-
-            console.log(generated_files)
+            if (result.mode === "CODE") {
+                dispatch(setSelectedCommit(result.commit_data))
+            }
 
             setIsLoading(false)
         } catch (err) {
