@@ -237,6 +237,7 @@ def handle_code_response(session_id, session, query, parsed, df):
             "response": response,
             "key_steps": key_steps,
             "code": code,
+            "generated_files": new_files,
             "success": True,
             "error": None
         }
