@@ -121,7 +121,7 @@ const Chat = () => {
 
         pollHistory()
 
-        const intervalId = setInterval(pollHistory, 10 * 1000)
+        const intervalId = setInterval(pollHistory, 6 * 10 * 1000)
 
         return () => { clearInterval(intervalId) }
     }, [])

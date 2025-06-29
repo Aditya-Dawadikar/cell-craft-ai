@@ -1,6 +1,6 @@
 import { Box, Button, Collapse, Paper, Stack } from '@mui/material'
 import CommitHistory from './DataTiles/CommitHistory'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PanelGrid from './DataTiles/PanelGrid'
 import { Tooltip } from '@mui/material'
 import { useSelector, useDispatch } from 'react-redux'
@@ -9,6 +9,8 @@ import { Autocomplete, Typography, TextField } from '@mui/material'
 import { getCommitFiles } from '../services/commit'
 import { setSelectedCommit } from '../slices/commitSlice'
 import type { Commit } from '../interfaces/CommitInterfance'
+import CommitDAG from './CommitDAG'
+import CommitIcon from '@mui/icons-material/Commit';
 
 type Panel =
     | { type: 'dataframe'; title: string; url: string }
@@ -19,7 +21,7 @@ const DataPreview = () => {
 
     const dispatch = useDispatch()
 
-    const [drawerOpen, setDrawerOpen] = useState(false)
+    const [drawerOpen, setDrawerOpen] = useState(true)
 
     const commitList = useSelector((state: RootState) => state.commit.commits) ?? []
     const commitHead = useSelector((state: RootState) => state.commit.head)
@@ -33,12 +35,21 @@ const DataPreview = () => {
     const truncate = (str: string | undefined | null, len = 50) =>
         str && str.length > len ? str.slice(0, len) + '...' : str ?? ''
 
+    useEffect(() => {
+        if (selectedCommit !== null && selectedCommit?.commit_id !== null) {
+            handleFetchFiles(selectedCommit.commit_id)
+        }
+    }, [selectedCommit])
+
     const handleFetchFiles = async (commit_id: string) => {
-        const data = await getCommitFiles(sessionIdFromStore, commit_id)
+        if (sessionIdFromStore && commit_id) {
 
-        console.log("commit files", data)
+            const data = await getCommitFiles(sessionIdFromStore, commit_id)
 
-        setPanels([...data.files])
+            console.log("commit files", data)
+
+            setPanels([...data.files])
+        }
     }
 
     const handleSelectCommit = (commit: Commit | null) => {
@@ -66,7 +77,7 @@ const DataPreview = () => {
         >
             <Stack direction="row" spacing={2} mb={2}>
                 <Button variant="contained" onClick={() => setDrawerOpen((prev) => !prev)}>
-                    {drawerOpen ? 'Hide' : 'Show'} Commit History
+                    <CommitIcon />
                 </Button>
 
                 <Autocomplete
@@ -127,7 +138,7 @@ const DataPreview = () => {
             <Collapse in={drawerOpen} orientation="vertical" unmountOnExit>
                 <Box
                     sx={{
-                        height: '20vh',
+                        height: '400px',
                         bgcolor: '#f5f5f5',
                         borderTop: '1px solid #ddd',
                         borderTopLeftRadius: 12,
@@ -136,7 +147,7 @@ const DataPreview = () => {
                         p: 2,
                     }}
                 >
-                    <CommitHistory />
+                    <CommitDAG />
                 </Box>
             </Collapse>
         </Paper>
