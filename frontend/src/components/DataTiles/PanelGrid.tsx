@@ -12,13 +12,16 @@ interface Props {
     panels: Panel[]
 }
 
+
+const base_url = "http://localhost:8000"
+
 const PanelGrid = ({ panels }: Props) => {
     return (
         <Grid container spacing={2}>
             {panels.map((panel, index) => (
                 <Grid item xs={12} sm={6} md={4} key={index}>
                     <Paper elevation={3} sx={{ m: 1, height: '100%' }}>
-                        <div style={{padding:"1em"}}>
+                        <div style={{ padding: "1em" }}>
                             <Typography variant="h6" gutterBottom>
                                 {panel.title}
                             </Typography>
@@ -46,7 +49,7 @@ const CSVPreview = ({ url }: { url: string }) => {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        fetch(url)
+        fetch(base_url + url)
             .then((res) => res.text())
             .then((csv) => {
                 const result = Papa.parse<string[]>(csv, { skipEmptyLines: true })
@@ -98,7 +101,7 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
     const [markdown, setMarkdown] = useState('Loading...')
 
     useEffect(() => {
-        fetch(url)
+        fetch(base_url + url)
             .then((res) => res.text())
             .then(setMarkdown)
             .catch(() => setMarkdown('Failed to load markdown'))
@@ -106,7 +109,7 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
 
     return (
         <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
-            <div style={{background:"#ffeede", padding: "1em"}}>
+            <div style={{ background: "#ffeede", padding: "1em" }}>
                 <ReactMarkdown>{markdown}</ReactMarkdown>
             </div>
         </Box>

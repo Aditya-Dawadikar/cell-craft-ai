@@ -24,6 +24,8 @@ interface Message {
 const Chat = () => {
 
     const messagesFromStore = useSelector((state: RootState) => state.chat.messages)
+    const sessionIdFromStore = useSelector((state: RootState) => state.chat.session_id)
+
     const commitHistoryFromStore = useSelector((state: RootState) => state.commit.commits)
     const commitHeadFromStore = useSelector((state: RootState) => state.commit.head)
 
@@ -73,8 +75,7 @@ const Chat = () => {
 
         try {
             setIsLoading(true)
-            const result = await sendMessage(session_id, input)
-            console.log(result)
+            const result = await sendMessage(sessionIdFromStore, input)
 
             setMessages((prev) => [...prev, { text: result.response, sender: 'bot' }])
 
@@ -101,7 +102,8 @@ const Chat = () => {
     useEffect(() => {
         const pollHistory = async () => {
             try {
-                const data = await getVersionHistory(session_id)
+                const data = await getVersionHistory(sessionIdFromStore)
+
                 setVersionHistory({
                     head: data.head || null,
                     commits: data.commits || []

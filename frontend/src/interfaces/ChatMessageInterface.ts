@@ -16,5 +16,6 @@ export interface ChatMessage {
 }
 
 export interface ChatState {
+    session_id: string,
     messages: ChatMessage[]
 }
