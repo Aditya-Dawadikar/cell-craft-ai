@@ -1,5 +1,4 @@
 import { Box, Button, Collapse, Paper, Stack } from '@mui/material'
-import CommitHistory from './DataTiles/CommitHistory'
 import { useEffect, useState } from 'react'
 import PanelGrid from './DataTiles/PanelGrid'
 import { Tooltip } from '@mui/material'
@@ -11,6 +10,7 @@ import { setSelectedCommit } from '../slices/commitSlice'
 import type { Commit } from '../interfaces/CommitInterfance'
 import CommitDAG from './CommitDAG'
 import CommitIcon from '@mui/icons-material/Commit';
+import { ReactFlowProvider } from 'reactflow'
 
 type Panel =
     | { type: 'dataframe'; title: string; url: string }
@@ -27,7 +27,8 @@ const DataPreview = () => {
     const commitHead = useSelector((state: RootState) => state.commit.head)
     const selectedCommit = useSelector((state: RootState) => state.commit.selectedCommit)
 
-    const sessionIdFromStore = useSelector((state: RootState) => state.chat.session_id)
+    const session = useSelector((state: RootState) => state.session.activeSession)
+    let sessionIdFromStore = session?.session_id || ""
 
     const [panels, setPanels] = useState<Panel[]>([])
 
@@ -62,6 +63,11 @@ const DataPreview = () => {
             setPanels([])
         }
     }
+
+    useEffect(() => {
+        // Clear panels when the session changes
+        setPanels([]);
+    }, [sessionIdFromStore]);
 
     return (
         <Paper
@@ -147,7 +153,9 @@ const DataPreview = () => {
                         p: 2,
                     }}
                 >
-                    <CommitDAG />
+                    <ReactFlowProvider>
+                        <CommitDAG key={session?.session_id || 'default'} />
+                    </ReactFlowProvider>
                 </Box>
             </Collapse>
         </Paper>

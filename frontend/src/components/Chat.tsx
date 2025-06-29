@@ -5,8 +5,6 @@ import { Divider } from '@mui/material'
 import { TextField } from '@mui/material'
 import { IconButton } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
-import AttachFileIcon from '@mui/icons-material/AttachFile'
-import ClearIcon from '@mui/icons-material/Clear'
 import { sendMessage, loadConversationHistory } from '../services/chat'
 import { LinearProgress } from '@mui/material'
 import { useDispatch, useSelector } from 'react-redux'
@@ -35,7 +33,8 @@ interface Message {
 const Chat = () => {
 
     const messages = useSelector((state: RootState) => state.chat.messages)
-    const sessionIdFromStore = useSelector((state: RootState) => state.chat.session_id)
+    const session = useSelector((state: RootState) => state.session.activeSession)
+    let sessionIdFromStore = session?.session_id || ""
 
     const commitHistoryFromStore = useSelector((state: RootState) => state.commit.commits)
     const commitHeadFromStore = useSelector((state: RootState) => state.commit.head)
@@ -121,7 +120,6 @@ const Chat = () => {
             const data = await loadConversationHistory(sessionIdFromStore)
             let conv: ChatMessage[] = []
             data["chat_history"].map((item: any, index) => {
-                console.log("item:", item)
                 let userMessage = {
                     text: item.query,
                     sender: 'user',
@@ -179,6 +177,13 @@ const Chat = () => {
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages, isLoading])
+
+    useEffect(() => {
+        if (!sessionIdFromStore) return;
+
+        fetchConversation();
+        pollHistory();
+    }, [sessionIdFromStore]);
 
     return (
         <Paper
@@ -291,27 +296,6 @@ const Chat = () => {
             </Box>
             <Divider />
 
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-            />
-
-            {/* Preview */}
-            {attachedFile && (
-                <Box mt={1} p={1} bgcolor="#f0f0f0" borderRadius={2}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Typography variant="body2" fontWeight="bold">
-                            Attached: {attachedFile.name}
-                        </Typography>
-                        <IconButton onClick={clearAttachment} size="small">
-                            <ClearIcon style={{ height: "12", width: "12" }} />
-                        </IconButton>
-                    </div>
-                </Box>
-            )}
-
             <Box
                 sx={{
                     display: 'flex',
@@ -331,9 +315,6 @@ const Chat = () => {
                 />
                 <IconButton color="primary" onClick={handleSend}>
                     <SendIcon />
-                </IconButton>
-                <IconButton color="primary" onClick={openFileDialog}>
-                    <AttachFileIcon />
                 </IconButton>
             </Box>
         </Paper>
