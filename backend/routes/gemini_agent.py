@@ -19,6 +19,7 @@ import sklearn
 import matplotlib.pyplot as plt
 import seaborn as sns
 import datetime
+from routes.version_history import get_commit_file_urls
 
 from google import genai
 
@@ -100,7 +101,8 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
                     {{
                     "mode": "CODE",
                     "key_steps": "<summary>",
-                    "executable_code": "<python pandas code>"
+                    "executable_code": "<python pandas code>",
+                    "response": "<acknowledgement of transforms>"
                     }}
 
                     You can also manage which CSV version you're working on.
@@ -110,14 +112,16 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
                     {{
                     "mode": "CONTEXT",
                     "action": "checkout",
-                    "target_commit_id": "<commit_id>"
+                    "target_commit_id": "<commit_id>",
+                    "response": "<acknowledgement of context change>"
                     }}
 
                     If creating a new branch from an older commit:
                     {{
                     "mode": "CONTEXT",
                     "action": "branch",
-                    "target_commit_id": "<commit_id>"
+                    "target_commit_id": "<commit_id>",
+                    "response": "<acknowledgement of context change>"
                     }}
 
                     IMPORTANT:
@@ -193,6 +197,7 @@ def download_csv(session_id: str = Query(...), commit_id: str = Query(...)):
 def handle_code_response(session_id, session, query, parsed, df):
     key_steps = parsed["key_steps"]
     code = parsed["executable_code"]
+    response = parsed["response"]
 
     # Prepare commit ID and folder
     parent_commit = session.get("head")
@@ -222,14 +227,14 @@ def handle_code_response(session_id, session, query, parsed, df):
     try:
         exec(code, safe_globals, local_vars)
 
-        new_files = list(set(os.listdir(commit_folder)) - existing_files)
+        new_files = get_commit_file_urls(session, commit_id)
 
         df = local_vars["df"]
 
         step = {
             "query": query,
             "mode": "CODE",
-            "response": None,
+            "response": response,
             "key_steps": key_steps,
             "code": code,
             "success": True,
@@ -247,7 +252,7 @@ def handle_code_response(session_id, session, query, parsed, df):
         return JSONResponse(content={
             "success": True,
             "mode": "CODE",
-            "response": None,
+            "response": response,
             "code": code,
             "key_steps": key_steps,
             "df_head": df_head.to_dict(orient="records"),
@@ -265,7 +270,7 @@ def handle_code_response(session_id, session, query, parsed, df):
         step = {
             "query": query,
             "mode": "CODE",
-            "response": None,
+            "response": response,
             "key_steps": key_steps,
             "code": code,
             "success": False,
@@ -277,7 +282,7 @@ def handle_code_response(session_id, session, query, parsed, df):
         return JSONResponse(content={
             "success": False,
             "mode": "CODE",
-            "response": None,
+            "response": response,
             "error": str(exec_err),
             "code": code,
             "key_steps": key_steps
@@ -306,6 +311,7 @@ def handle_chat_response(session_id, session, query, parsed):
                     "response": llm_response_text,
                     "code": None,
                     "key_steps": None,
+                    "generated_files": [],
                     "head": None
                 })
     except Exception as e:
@@ -316,6 +322,7 @@ def handle_context_change(session_id, session, parsed):
     try:
         action = parsed.get("action")
         commit_id = parsed.get("target_commit_id")
+        response = parsed["response"]
 
         if action == "checkout":
             updated_session = set_head(session, commit_id)
@@ -323,6 +330,7 @@ def handle_context_change(session_id, session, parsed):
             return JSONResponse(content={
                 "success": True,
                 "mode": "CONTEXT",
+                "response": response,
                 "action": "checkout",
                 "message": f"HEAD moved to commit {commit_id}"
             })
@@ -333,6 +341,7 @@ def handle_context_change(session_id, session, parsed):
             return JSONResponse(content={
                 "success": True,
                 "mode": "CONTEXT",
+                "response": response,
                 "action": "branch",
                 "new_head": updated_session["head"],
                 "message": f"Branched from commit {commit_id}"
@@ -341,6 +350,7 @@ def handle_context_change(session_id, session, parsed):
         return JSONResponse(content={
             "success": False,
             "mode": "CONTEXT",
+            "response": response,
             "error": "Invalid context action"
         }, status_code=400)
     except Exception as e:
