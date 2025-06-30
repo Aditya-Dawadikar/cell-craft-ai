@@ -1,0 +1,25 @@
+<svg width="160" height="160" viewBox="-11 -5 160 120" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <circle cx="69" cy="55" r="80" fill="#000" />
+  <!-- Grid (3x3 with center circle) -->
+  <g stroke="#54ffc9" stroke-width="5" fill="none">
+    <rect x="12" y="10" width="90" height="90" rx="5" />
+    <line x1="42" y1="10" x2="40" y2="100" />
+    <line x1="72" y1="10" x2="70" y2="100" />
+    <line x1="12" y1="40" x2="100" y2="40" />
+    <line x1="12" y1="70" x2="100" y2="70" />
+  </g>
+
+  <!-- Central Circle -->
+  <circle cx="55" cy="55" r="8" fill="#54ffc9" />
+
+  <!-- Circuit lines -->
+  <g stroke="#54ffc9" stroke-width="5" stroke-linecap="round">
+    <line x1="103" y1="35" x2="125" y2="35" />
+    <circle cx="128" cy="35" r="5" fill="#54ffc9" />
+    <line x1="103" y1="55" x2="125" y2="55" />
+    <circle cx="128" cy="55" r="5" fill="#54ffc9" />
+    <line x1="103" y1="75" x2="125" y2="75" />
+    <circle cx="128" cy="75" r="5" fill="#54ffc9" />
+  </g>
+
+</svg>

@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import Papa from 'papaparse'
 import DownloadIcon from '@mui/icons-material/Download';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import PanelPreviewDialog from './PanelPreviewDialog';
 
 type Panel =
     | { type: 'dataframe'; title: string; url: string }
@@ -14,11 +15,12 @@ interface Props {
     panels: Panel[]
 }
 
+const BASE_URL = import.meta.env.VITE_BASE_URL
 
-const base_url = "http://localhost:8000"
 
 const PanelGrid = ({ panels }: Props) => {
 
+    const [enlargedPanel, setEnlargedPanel] = useState<Panel | null>(null)
 
     const handleDownload = async (url: string, filename: string) => {
         try {
@@ -41,41 +43,45 @@ const PanelGrid = ({ panels }: Props) => {
     }
 
     return (
-        <Grid container spacing={2}>
-            {panels.map((panel, index) => (
-                <Grid item xs={12} sm={6} md={4} key={index}>
-                    <Paper elevation={3} sx={{ m: 1, height: '100%' }}>
-                        <div style={{ padding: "0.5em" }}>
+        <>
+            <Grid container spacing={2}>
+                {panels.map((panel, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                        <Paper elevation={3} sx={{ m: 1, height: '100%' }}>
+                            <div style={{ padding: "0.5em" }}>
 
-                            <Stack direction="row"
-                                alignItems="center"
-                                justifyContent="space-between">
-                                <Typography gutterBottom>
-                                    {panel.title}
-                                </Typography>
                                 <Stack direction="row"
-                                    sx={{
-                                        justifyContent: 'flex-end'
-                                    }}>
+                                    alignItems="center"
+                                    justifyContent="space-between">
+                                    <Typography gutterBottom>
+                                        {panel.title}
+                                    </Typography>
+                                    <Stack direction="row"
+                                        sx={{
+                                            justifyContent: 'flex-end'
+                                        }}>
 
-                                    <IconButton>
-                                        <FullscreenIcon />
-                                    </IconButton>
-                                    <IconButton onClick={() => { handleDownload(base_url + panel.url, panel.title) }}>
-                                        <DownloadIcon />
-                                    </IconButton>
+                                        <IconButton>
+                                            <FullscreenIcon onClick={()=>{setEnlargedPanel(panel)}} />
+                                        </IconButton>
+                                        <IconButton onClick={() => { handleDownload(BASE_URL + panel.url, panel.title) }}>
+                                            <DownloadIcon />
+                                        </IconButton>
+                                    </Stack>
                                 </Stack>
-                            </Stack>
 
 
-                            {panel.type === 'dataframe' && <CSVPreview url={panel.url} />}
-                            {panel.type === 'readme' && <MarkdownFromUrl url={panel.url} />}
-                            {panel.type === 'chart' && <ImageFromUrl url={panel.url} title={panel.title} />}
-                        </div>
-                    </Paper>
-                </Grid>
-            ))}
-        </Grid>
+                                {panel.type === 'dataframe' && <CSVPreview url={panel.url} />}
+                                {panel.type === 'readme' && <MarkdownFromUrl url={panel.url} />}
+                                {panel.type === 'chart' && <ImageFromUrl url={panel.url} title={panel.title} />}
+                            </div>
+                        </Paper>
+                    </Grid>
+                ))}
+            </Grid>
+            <PanelPreviewDialog panel={enlargedPanel} onClose={() => setEnlargedPanel(null)} />
+
+        </>
     )
 }
 
@@ -84,7 +90,7 @@ const CSVPreview = ({ url }: { url: string }) => {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        fetch(base_url + url)
+        fetch(BASE_URL + url)
             .then((res) => res.text())
             .then((csv) => {
                 const result = Papa.parse<string[]>(csv, { skipEmptyLines: true })
@@ -136,7 +142,7 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
     const [markdown, setMarkdown] = useState('Loading...')
 
     useEffect(() => {
-        fetch(base_url + url)
+        fetch(BASE_URL + url)
             .then((res) => res.text())
             .then(setMarkdown)
             .catch(() => setMarkdown('Failed to load markdown'))
@@ -154,7 +160,7 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
 const ImageFromUrl = ({ url, title }: { url: string, title: string }) => {
     return (<Box
         component="img"
-        src={base_url + url}
+        src={BASE_URL + url}
         alt={title}
         sx={{
             width: '100%',

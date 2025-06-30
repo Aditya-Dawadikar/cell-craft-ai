@@ -1,5 +1,7 @@
+const BASE_URL = import.meta.env.VITE_BASE_URL
+
 export const getSessionList = async (): Promise<any> => {
-    const response = await fetch(`http://localhost:8000/session-list`)
+    const response = await fetch(`${BASE_URL}/session-list`)
 
     if (!response.ok) {
         throw new Error("Failed to fetch sessions")
@@ -13,7 +15,7 @@ export const createSession = async (file: File, sessionName: string): Promise<an
     formData.append('file', file)
     formData.append('session_name', sessionName)
 
-    const response = await fetch(`http://localhost:8000/create-session/`, {
+    const response = await fetch(`${BASE_URL}/create-session/`, {
         method: "POST",
         body: formData,
     });

@@ -1,4 +1,4 @@
-import { Box, Button, Paper, Stack } from '@mui/material'
+import { Box, Paper, Stack } from '@mui/material'
 import { useEffect, useState } from 'react'
 import PanelGrid from './DataTiles/PanelGrid'
 import { Tooltip } from '@mui/material'
@@ -9,7 +9,6 @@ import { getCommitFiles } from '../services/commit'
 import { setSelectedCommit } from '../slices/commitSlice'
 import type { Commit } from '../interfaces/CommitInterfance'
 import CommitDAG from './CommitDAG'
-import CommitIcon from '@mui/icons-material/Commit';
 import { ReactFlowProvider } from 'reactflow'
 import Split from 'react-split'
 
@@ -46,8 +45,6 @@ const DataPreview = () => {
 
             const data = await getCommitFiles(sessionIdFromStore, commit_id)
 
-            console.log("commit files", data)
-
             setPanels([...data.files])
         }
     }
@@ -81,9 +78,6 @@ const DataPreview = () => {
             }}
         >
             <Stack direction="row" spacing={2} mb={2}>
-                <Button variant="contained" onClick={() => setDrawerOpen((prev) => !prev)}>
-                    <CommitIcon />
-                </Button>
 
                 <Autocomplete
                     sx={{ width: 400 }}

@@ -104,8 +104,6 @@ def get_commit_file_urls(session, commit_id):
     
     static_urls = []
 
-    print(os.listdir(commit_folder))
-
     for fname in os.listdir(commit_folder):
         abs_path = os.path.join(commit_folder, fname)
         rel_path = os.path.relpath(abs_path, start=static_base_path)

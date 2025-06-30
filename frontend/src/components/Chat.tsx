@@ -146,17 +146,23 @@ const Chat = () => {
 
     const pollHistory = async () => {
         try {
-            const data = await getVersionHistory(sessionIdFromStore)
 
-            setVersionHistory({
-                head: data.head || null,
-                commits: data.commits || []
-            })
+            if (sessionIdFromStore && sessionIdFromStore !== "") {
 
-            dispatch(setCommitHistory({
-                head: data.head || null,
-                commits: data.commits || []
-            }))
+                const data = await getVersionHistory(sessionIdFromStore)
+
+                setVersionHistory({
+                    head: data.head || null,
+                    commits: data.commits || []
+                })
+
+                dispatch(setCommitHistory({
+                    head: data.head || null,
+                    commits: data.commits || []
+                }))
+            } else {
+                console.log("Session ID not set in store yet")
+            }
 
         } catch (err) {
             console.log("Error fetching version history:", err)
@@ -165,13 +171,16 @@ const Chat = () => {
 
     useEffect(() => {
 
-        fetchConversation()
+        if (sessionIdFromStore && sessionIdFromStore !== "") {
 
-        pollHistory()
+            fetchConversation()
 
-        const intervalId = setInterval(pollHistory, 6 * 10 * 1000)
+            pollHistory()
 
-        return () => { clearInterval(intervalId) }
+            const intervalId = setInterval(pollHistory, 6 * 10 * 1000)
+
+            return () => { clearInterval(intervalId) }
+        }
     }, [])
 
     useEffect(() => {
