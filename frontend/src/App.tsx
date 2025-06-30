@@ -25,7 +25,7 @@ function App() {
 
   return (
     <>
-      <Grid container spacing={2}>
+      <Grid container spacing={1}>
         <Grid size={2}>
           <SideNav />
         </Grid>

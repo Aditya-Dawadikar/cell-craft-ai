@@ -201,9 +201,10 @@ const Chat = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%',
-                maxHeight: 'calc(100vh - 25px)',
+                maxHeight: 'calc(100vh - 30px)',
                 p: 1,
             }}
+            style={{ margin: "0.5em" }}
         >
             {
                 session ? <>
@@ -305,7 +306,7 @@ const Chat = () => {
                     </Box>
                     <Divider />
                     {
-                        isLoading ? <LinearProgress sx={{ margin: 1, height:10 }} /> : <></>
+                        isLoading ? <LinearProgress sx={{ margin: 1, height: 10 }} /> : <></>
                     }
                     <Box
                         sx={{
@@ -329,7 +330,11 @@ const Chat = () => {
                         </IconButton>
                     </Box>
                 </> : <>
-                    Select a Project to start conversation.
+                    <Box sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Typography variant="h6" color="textSecondary">
+                            Select or Create a Project to start a conversation.
+                        </Typography>
+                    </Box>
                 </>
             }
         </Paper>
