@@ -1,3 +1,7 @@
+body {
+    background-color: #ededed;
+}
+
 .split {
     display: flex;
     flex-direction: column;

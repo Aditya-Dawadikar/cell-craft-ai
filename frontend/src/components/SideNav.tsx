@@ -9,7 +9,7 @@ import {
     Dialog, DialogTitle, DialogContent,
     DialogActions, Button, TextField, InputLabel,
     Autocomplete,
-    Tooltip, IconButton, Menu, MenuItem
+    Tooltip, IconButton, Menu, MenuItem, Paper
 } from '@mui/material'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import EditIcon from '@mui/icons-material/Edit';
@@ -101,7 +101,7 @@ const SideNav = () => {
     }
 
     return (
-        <Box sx={{ width: '100%', height: '100vh', bgcolor: '#f5f5f5' }}>
+        <Paper sx={{ width: '100%', height: '100vh' }}>
             <Box sx={{ p: 2 }}>
                 <img src={Logo} alt="Logo" style={{ height: 40, margin: "1em 0" }} />
                 <List>
@@ -236,7 +236,7 @@ const SideNav = () => {
                 </DialogActions>
             </Dialog>
 
-        </Box>
+        </Paper>
     )
 }
 
