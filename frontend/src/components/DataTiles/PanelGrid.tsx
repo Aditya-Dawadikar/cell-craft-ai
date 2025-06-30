@@ -15,8 +15,8 @@ interface Props {
     panels: Panel[]
 }
 
+const BASE_URL = import.meta.env.VITE_BASE_URL
 
-const base_url = "http://localhost:8000"
 
 const PanelGrid = ({ panels }: Props) => {
 
@@ -64,7 +64,7 @@ const PanelGrid = ({ panels }: Props) => {
                                         <IconButton>
                                             <FullscreenIcon onClick={()=>{setEnlargedPanel(panel)}} />
                                         </IconButton>
-                                        <IconButton onClick={() => { handleDownload(base_url + panel.url, panel.title) }}>
+                                        <IconButton onClick={() => { handleDownload(BASE_URL + panel.url, panel.title) }}>
                                             <DownloadIcon />
                                         </IconButton>
                                     </Stack>
@@ -90,7 +90,7 @@ const CSVPreview = ({ url }: { url: string }) => {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        fetch(base_url + url)
+        fetch(BASE_URL + url)
             .then((res) => res.text())
             .then((csv) => {
                 const result = Papa.parse<string[]>(csv, { skipEmptyLines: true })
@@ -142,7 +142,7 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
     const [markdown, setMarkdown] = useState('Loading...')
 
     useEffect(() => {
-        fetch(base_url + url)
+        fetch(BASE_URL + url)
             .then((res) => res.text())
             .then(setMarkdown)
             .catch(() => setMarkdown('Failed to load markdown'))
@@ -160,7 +160,7 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
 const ImageFromUrl = ({ url, title }: { url: string, title: string }) => {
     return (<Box
         component="img"
-        src={base_url + url}
+        src={BASE_URL + url}
         alt={title}
         sx={{
             width: '100%',

@@ -22,7 +22,7 @@ interface PanelPreviewDialogProps {
     onClose: () => void
 }
 
-const base_url = "http://localhost:8000"
+const BASE_URL = import.meta.env.VITE_BASE_URL
 
 const PanelPreviewDialog = ({ panel, onClose }: PanelPreviewDialogProps) => {
     if (!panel) return null
@@ -65,13 +65,13 @@ const PanelPreviewDialog = ({ panel, onClose }: PanelPreviewDialogProps) => {
 
             <Box p={4} sx={{ overflow: 'auto' }}>
                 {panel.type === 'dataframe' && (
-                    <iframe src={base_url + panel.url} style={{ width: '100%', height: '90vh', border: 'none' }} />
+                    <iframe src={BASE_URL + panel.url} style={{ width: '100%', height: '90vh', border: 'none' }} />
                 )}
                 {panel.type === 'readme' && (
-                    <iframe src={base_url + panel.url} style={{ width: '100%', height: '90vh', border: 'none' }} />
+                    <iframe src={BASE_URL + panel.url} style={{ width: '100%', height: '90vh', border: 'none' }} />
                 )}
                 {panel.type === 'chart' && (
-                    <img src={base_url + panel.url} alt="Chart Preview" style={{ maxWidth: '100%' }} />
+                    <img src={BASE_URL + panel.url} alt="Chart Preview" style={{ maxWidth: '100%' }} />
                 )}
             </Box>
         </Dialog>
