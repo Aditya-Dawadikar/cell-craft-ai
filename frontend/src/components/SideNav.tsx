@@ -25,6 +25,7 @@ import { createSession } from '../services/session';
 
 import { addSession, setActiveSession } from '../slices/sessionSlice';
 import type { Session } from '../interfaces/SessionInterface';
+import Logo from '../assets/logo.svg'
 
 const SideNav = () => {
 
@@ -103,9 +104,7 @@ const SideNav = () => {
     return (
         <Box sx={{ width: '100%', height: '100vh', bgcolor: '#f5f5f5' }}>
             <Box sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                    CellCraft-AI
-                </Typography>
+                <img src={Logo} alt="Logo" style={{ height: 40, margin: "1em 0" }} />
                 <List>
                     <ListItem key={navOptions.SEARCH_PROJECT.display_name} disablePadding>
                         <Autocomplete
@@ -164,7 +163,7 @@ const SideNav = () => {
                 <Typography variant="h6" sx={{ mt: 3 }}>
                     Projects
                 </Typography>
-                
+
                 <List>
                     {sessionsList.map((session, index) => {
                         const isActive = session.session_id === activeSession?.session_id

@@ -81,9 +81,6 @@ const DataPreview = () => {
             }}
         >
             <Stack direction="row" spacing={2} mb={2}>
-                <Button variant="contained" onClick={() => setDrawerOpen((prev) => !prev)}>
-                    <CommitIcon />
-                </Button>
 
                 <Autocomplete
                     sx={{ width: 400 }}
