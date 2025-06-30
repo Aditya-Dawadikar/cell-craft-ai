@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react'
 import ReactFlow, {
-  ReactFlowProvider,
   Background,
   Controls,
   useNodesState,
@@ -186,29 +185,27 @@ const CommitDAG = () => {
   }, [selectedCommit, commitHead])
 
   return (
-    <ReactFlowProvider>
-      <div style={{ width: '100%', height: '100%', overflow: 'auto' }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          fitView
-          panOnScroll
-          zoomOnScroll
-          nodeTypes={nodeTypes}
-          onNodeClick={(_, node) => {
-            const selected = commits.find((c) => c.commit_id === node.id)
-            if (selected) {
-              dispatch(setSelectedCommit(selected))
-            }
-          }}
-        >
-          <Background />
-          <Controls />
-        </ReactFlow>
-      </div>
-    </ReactFlowProvider>
+    <div style={{ width: '100%', height: '100%', overflow: 'auto' }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        fitView
+        panOnScroll
+        zoomOnScroll
+        nodeTypes={nodeTypes}
+        onNodeClick={(_, node) => {
+          const selected = commits.find((c) => c.commit_id === node.id)
+          if (selected) {
+            dispatch(setSelectedCommit(selected))
+          }
+        }}
+      >
+        <Background />
+        <Controls />
+      </ReactFlow>
+    </div>
   )
 }
 

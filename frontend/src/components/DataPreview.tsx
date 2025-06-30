@@ -130,9 +130,18 @@ const DataPreview = () => {
                 minSize={100}
                 gutterSize={8}
                 className="split"
-                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                style={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}
             >
-                <Box sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box
+                    style={{
+                        background: "#ededed",
+                        borderRadius: "0.5em"
+                    }}
+                    sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {panels.length > 0 ? (
                         <PanelGrid panels={panels} />
                     ) : (
