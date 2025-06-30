@@ -35,7 +35,7 @@ def save_session_store(store):
     with open(SESSION_STORE_FILE, "w") as f:
         json.dump(store, f, indent=2)
 
-def create_new_session(file_bytes: bytes) -> dict:
+def create_new_session(file_bytes: bytes, session_name: str) -> dict:
     try:
         session_id = str(uuid.uuid4())
         session_dir = os.path.join(SESSION_FILES_DIR, session_id)
@@ -71,6 +71,7 @@ def create_new_session(file_bytes: bytes) -> dict:
 
         session_info = {
             "session_id": session_id,
+            "session_name": session_name,
             "head": commit_id,
             "last_csv_path": csv_path,
             "history_path": history_path,
@@ -232,7 +233,7 @@ def branch_from_commit(session: dict, target_commit_id: str) -> dict:
 def set_head(session: dict, commit_id: str) -> dict:
     session_id = session["session_id"]
     session_dir = session["session_dir"]
-    csv_path = os.path.join(session_dir, f"{commit_id}.csv")
+    csv_path = os.path.join(session_dir, f"{commit_id}\{commit_id}.csv")
 
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"CSV for commit {commit_id} not found")

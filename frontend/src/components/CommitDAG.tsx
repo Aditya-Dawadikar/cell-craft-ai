@@ -13,7 +13,6 @@ import type { RootState } from '../store'
 import { setSelectedCommit } from '../slices/commitSlice'
 import type { Node, Edge } from 'reactflow'
 
-
 // === Custom Commit Node ===
 export const CommitNode = ({ data }: { data: any }) => {
   return (
@@ -86,6 +85,13 @@ const CommitDAG = () => {
   const nodeSpacingX = 500
   const fileOffsetX = 300
   const fileSpacingY = 50
+
+  const session = useSelector((state: RootState) => state.session.activeSession)
+
+  useEffect(() => {
+    setNodes([])
+    setEdges([])
+  }, [session?.session_id])
 
   useEffect(() => {
     const initialNodes: Node[] = []

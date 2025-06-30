@@ -1,5 +1,4 @@
-import { Box, Button, Collapse, Paper, Stack } from '@mui/material'
-import CommitHistory from './DataTiles/CommitHistory'
+import { Box, Button, Paper, Stack } from '@mui/material'
 import { useEffect, useState } from 'react'
 import PanelGrid from './DataTiles/PanelGrid'
 import { Tooltip } from '@mui/material'
@@ -11,6 +10,8 @@ import { setSelectedCommit } from '../slices/commitSlice'
 import type { Commit } from '../interfaces/CommitInterfance'
 import CommitDAG from './CommitDAG'
 import CommitIcon from '@mui/icons-material/Commit';
+import { ReactFlowProvider } from 'reactflow'
+import Split from 'react-split'
 
 type Panel =
     | { type: 'dataframe'; title: string; url: string }
@@ -21,13 +22,12 @@ const DataPreview = () => {
 
     const dispatch = useDispatch()
 
-    const [drawerOpen, setDrawerOpen] = useState(true)
-
     const commitList = useSelector((state: RootState) => state.commit.commits) ?? []
     const commitHead = useSelector((state: RootState) => state.commit.head)
     const selectedCommit = useSelector((state: RootState) => state.commit.selectedCommit)
 
-    const sessionIdFromStore = useSelector((state: RootState) => state.chat.session_id)
+    const session = useSelector((state: RootState) => state.session.activeSession)
+    let sessionIdFromStore = session?.session_id || ""
 
     const [panels, setPanels] = useState<Panel[]>([])
 
@@ -62,6 +62,11 @@ const DataPreview = () => {
             setPanels([])
         }
     }
+
+    useEffect(() => {
+        // Clear panels when the session changes
+        setPanels([]);
+    }, [sessionIdFromStore]);
 
     return (
         <Paper
@@ -122,23 +127,25 @@ const DataPreview = () => {
                         option.commit_id === value?.commit_id
                     }
                 />
-
             </Stack>
-
-            {/* Main area */}
-            <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-                {
-                    panels.length > 0 ?
-                        <PanelGrid panels={panels} /> :
-                        <><Typography>No Files to Show. Select a commit.</Typography></>
-                }
-            </Box>
-
-            {/* Simulated Drawer */}
-            <Collapse in={drawerOpen} orientation="vertical" unmountOnExit>
+            <Split
+                direction="vertical"
+                sizes={[50, 50]}
+                minSize={100}
+                gutterSize={8}
+                className="split"
+                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+            >
+                <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+                    {
+                        panels.length > 0 ?
+                            <PanelGrid panels={panels} /> :
+                            <><Typography>No Files to Show. Select a commit.</Typography></>
+                    }
+                </Box>
                 <Box
                     sx={{
-                        height: '400px',
+                        height: '50vh',
                         bgcolor: '#f5f5f5',
                         borderTop: '1px solid #ddd',
                         borderTopLeftRadius: 12,
@@ -147,9 +154,11 @@ const DataPreview = () => {
                         p: 2,
                     }}
                 >
-                    <CommitDAG />
+                    <ReactFlowProvider>
+                        <CommitDAG key={session?.session_id || 'default'} />
+                    </ReactFlowProvider>
                 </Box>
-            </Collapse>
+            </Split>
         </Paper>
     )
 }

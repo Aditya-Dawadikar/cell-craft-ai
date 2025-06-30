@@ -4,8 +4,38 @@ from fastapi.responses import JSONResponse, FileResponse
 from store import session_cache
 from session_management import list_commits
 import posixpath
+import json
 
 router = APIRouter()
+
+@router.get("/chat-history")
+def get_chat_history(session_id: str, last_10: bool=True):
+    session = session_cache.get(session_id, None)
+
+    if session is None:
+        return JSONResponse({
+            "success": False,
+            "msg": f"session_id {session_id} not found"
+        })
+    
+    with open(session["history_path"], "r") as f:
+        history = json.load(f)
+
+        if last_10 is True:
+            history = history[-10:]
+
+        res = {
+            "session_id": session_id,
+            "chat_history": history
+        }
+
+        return JSONResponse(res)
+    
+    return JSONResponse({
+        "success": False,
+        "message": "Some error occured while loading conversation history."
+    })
+
 
 @router.get("/version-history")
 def get_version_history(session_id:str):

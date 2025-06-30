@@ -37,19 +37,6 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 router = APIRouter()
 
-@router.post("/upload_csv/")
-async def upload_csv(file: UploadFile = File(...)):
-    try:
-        file_bytes = await file.read()
-        session_info = create_new_session(file_bytes)
-
-        session_id = session_info["session_id"]
-        session_cache[session_id] = session_info
-
-        return {"session_id": session_id}
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
-
 @router.post("/transform_csv/")
 async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
     session = session_cache.get(session_id)

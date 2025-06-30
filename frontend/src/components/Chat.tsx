@@ -5,13 +5,11 @@ import { Divider } from '@mui/material'
 import { TextField } from '@mui/material'
 import { IconButton } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
-import AttachFileIcon from '@mui/icons-material/AttachFile'
-import ClearIcon from '@mui/icons-material/Clear'
-import { sendMessage } from '../services/chat'
+import { sendMessage, loadConversationHistory } from '../services/chat'
 import { LinearProgress } from '@mui/material'
 import { useDispatch, useSelector } from 'react-redux'
 import type { RootState } from '../store/index'
-import { addMessage } from '../slices/chatSlice'
+import { addMessage, setConversation } from '../slices/chatSlice'
 import type { ChatMessage } from '../interfaces/ChatMessageInterface'
 import { setCommitHistory, setSelectedCommit } from '../slices/commitSlice'
 import { getVersionHistory } from '../services/commit'
@@ -34,8 +32,9 @@ interface Message {
 
 const Chat = () => {
 
-    const messagesFromStore = useSelector((state: RootState) => state.chat.messages)
-    const sessionIdFromStore = useSelector((state: RootState) => state.chat.session_id)
+    const messages = useSelector((state: RootState) => state.chat.messages)
+    const session = useSelector((state: RootState) => state.session.activeSession)
+    let sessionIdFromStore = session?.session_id || ""
 
     const commitHistoryFromStore = useSelector((state: RootState) => state.commit.commits)
     const commitHeadFromStore = useSelector((state: RootState) => state.commit.head)
@@ -47,16 +46,12 @@ const Chat = () => {
         head: null,
         commits: []
     })
-    const [messages, setMessages] = useState<Message[]>([
-        { text: 'Hi! How can I help you today?', sender: 'bot' },
-    ])
 
     const [attachedFile, setAttachedFile] = useState<File | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const bottomRef = useRef<HTMLDivElement>(null)
 
     const [input, setInput] = useState('')
-
-    const session_id = "e73358fc-2da7-44d5-8d05-7a5d85b124f2"
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -82,8 +77,6 @@ const Chat = () => {
             uploadedFile: attachedFile || undefined,
         };
 
-        setMessages([...messages, newMsg]);
-
         dispatch(addMessage({
             text: input,
             sender: 'user',
@@ -96,39 +89,59 @@ const Chat = () => {
             setIsLoading(true)
             const result = await sendMessage(sessionIdFromStore, input)
 
-            setMessages((prev) => [
-                ...prev,
-                {
-                    text: result.response,
-                    sender: 'bot',
-                    generatedFiles: result.generated_files,
-                    commitData: result.commit_data
-                },
-            ])
-
             dispatch(addMessage({
                 text: result.response,
-                sender: 'bot'
+                sender: 'bot',
+                generated_files: result.generated_files,
+                commit_data: result.commit_data
             } as ChatMessage))
 
             await pollHistory()
-            dispatch(setSelectedCommit(result.commit_data))
 
-            let generated_files = result.generated_files
-
-            console.log(generated_files)
+            if (result.mode === "CODE") {
+                dispatch(setSelectedCommit(result.commit_data))
+            }
 
             setIsLoading(false)
         } catch (err) {
             console.log(err)
             setIsLoading(false)
-            setMessages((prev) => [...prev, { text: "Some Error Occured, Try again", sender: 'bot' }])
+            dispatch(addMessage({
+                text: "Some Error Occurred, Try again",
+                sender: 'bot'
+            }))
         }
 
     }
 
-    const handleAttachment = async () => {
 
+    const fetchConversation = async () => {
+        try {
+            const data = await loadConversationHistory(sessionIdFromStore)
+            let conv: ChatMessage[] = []
+            data["chat_history"].map((item: any, index) => {
+                let userMessage = {
+                    text: item.query,
+                    sender: 'user',
+                }
+                let botMessage = {
+                    text: item.response,
+                    sender: 'bot',
+                    generatedFiles: item.generated_files,
+                    commitData: {
+                        commit_id: item.commit_id,
+                        parent_id: item.parent_commit,
+                        timestamp: item.timestamp
+                    }
+                }
+                conv.push(userMessage)
+                conv.push(botMessage)
+            })
+            dispatch(setConversation(conv))
+
+        } catch (err) {
+            console.log(err)
+        }
     }
 
     const pollHistory = async () => {
@@ -152,12 +165,25 @@ const Chat = () => {
 
     useEffect(() => {
 
+        fetchConversation()
+
         pollHistory()
 
         const intervalId = setInterval(pollHistory, 6 * 10 * 1000)
 
         return () => { clearInterval(intervalId) }
     }, [])
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [messages, isLoading])
+
+    useEffect(() => {
+        if (!sessionIdFromStore) return;
+
+        fetchConversation();
+        pollHistory();
+    }, [sessionIdFromStore]);
 
     return (
         <Paper
@@ -171,149 +197,132 @@ const Chat = () => {
                 m: 1,
             }}
         >
-            <Box
-                sx={{
-                    flexGrow: 1,
-                    overflowY: 'auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1,
-                    px: 1,
-                    pb: 2,
-                }}
-            >
-
-                {messages.map((msg, idx) => (
+            {
+                session ? <>
                     <Box
-                        key={idx}
                         sx={{
+                            flexGrow: 1,
+                            overflowY: 'auto',
                             display: 'flex',
                             flexDirection: 'column',
-                            alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                            alignItems: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                            gap: 1,
+                            px: 1,
+                            pb: 2,
                         }}
                     >
-                        {/* Message Bubble */}
-                        <Box
-                            sx={{
-                                bgcolor: msg.sender === 'user' ? '#1976d2' : '#f1f1f1',
-                                color: msg.sender === 'user' ? 'white' : 'black',
-                                px: 2,
-                                py: 1,
-                                borderRadius: 2,
-                                maxWidth: '75%',
-                            }}
-                        >
-                            <Typography variant="body2">{msg.text}</Typography>
-                        </Box>
 
-                        {/* User uploaded file */}
-                        {msg.uploadedFile && (
+                        {messages.map((msg, idx) => (
                             <Box
-                                mt={0.5}
-                                p={1}
-                                width={160}
-                                bgcolor="#e0f7fa"
-                                borderRadius={1}
-                                sx={{ color: 'black', textAlign: 'right' }}
+                                key={idx}
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                                    alignItems: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                                }}
                             >
-                                <Typography variant="caption" fontWeight="bold">
-                                    {msg.uploadedFile.name}
-                                </Typography>
-                            </Box>
-                        )}
+                                {/* Message Bubble */}
+                                <Box
+                                    sx={{
+                                        bgcolor: msg.sender === 'user' ? '#1976d2' : '#f1f1f1',
+                                        color: msg.sender === 'user' ? 'white' : 'black',
+                                        px: 2,
+                                        py: 1,
+                                        borderRadius: 2,
+                                        maxWidth: '75%',
+                                    }}
+                                >
+                                    <Typography variant="body2">{msg.text}</Typography>
+                                </Box>
 
-                        {/* Bot generated files */}
-                        {
-                            msg.commitData ? <Box
-                                bgcolor="#54ffc9"
-                                p={1}
-                                m={1}
-                                borderRadius={1}
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => {
-                                    if (msg.commitData) {
-                                        dispatch(setSelectedCommit(msg.commitData));
-                                    }
-                                }}>
-                                {msg.commitData ? <>
-                                    <Typography variant="caption" fontWeight="bold">
-                                        Commit: {msg.commitData.commit_id}
-                                    </Typography>
-                                </> : <></>}
-                                {msg.generatedFiles?.length > 0 &&
-                                    msg.generatedFiles.map((file, fileIdx) => (
-                                        <Box
-                                            key={fileIdx}
-                                            mt={0.5}
-                                            p={1}
-                                            width={180}
-                                            bgcolor="#fef5d3"
-                                            borderRadius={1}
-                                            sx={{ color: 'black', textAlign: 'left' }}
-                                        >
-                                            <Typography variant="caption"
-                                                sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                                                {file.title}
+                                {/* User uploaded file */}
+                                {msg.uploadedFile && (
+                                    <Box
+                                        mt={0.5}
+                                        p={1}
+                                        width={160}
+                                        bgcolor="#e0f7fa"
+                                        borderRadius={1}
+                                        sx={{ color: 'black', textAlign: 'right' }}
+                                    >
+                                        <Typography variant="caption" fontWeight="bold">
+                                            {msg.uploadedFile.name}
+                                        </Typography>
+                                    </Box>
+                                )}
+
+                                {/* Bot generated files */}
+                                {
+                                    msg.commitData ? <Box
+                                        bgcolor="#54ffc9"
+                                        p={1}
+                                        m={1}
+                                        borderRadius={1}
+                                        sx={{ cursor: "pointer" }}
+                                        onClick={() => {
+                                            if (msg.commitData) {
+                                                dispatch(setSelectedCommit(msg.commitData));
+                                            }
+                                        }}>
+                                        {msg.commitData ? <>
+                                            <Typography variant="caption" fontWeight="bold" >
+                                                Commit ID: <span style={{ background: '#fdff32', padding: '1px 4px', borderRadius: '2px' }}>{msg.commitData.commit_id}</span>
                                             </Typography>
-                                        </Box>
-                                    ))}
-                            </Box> : <></>
+                                        </> : <></>}
+                                        {msg.generatedFiles?.length > 0 &&
+                                            msg.generatedFiles.map((file, fileIdx) => (
+                                                <Box
+                                                    key={fileIdx}
+                                                    mt={0.5}
+                                                    p={1}
+                                                    width={180}
+                                                    bgcolor="#fef5d3"
+                                                    borderRadius={1}
+                                                    sx={{ color: 'black', textAlign: 'left' }}
+                                                >
+                                                    <Typography variant="caption"
+                                                        sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                                        {file.title}
+                                                    </Typography>
+                                                </Box>
+                                            ))}
+                                    </Box> : <></>
+                                }
+
+                            </Box>
+                        ))}
+                        <div ref={bottomRef} />
+                        {
+                            isLoading ? <LinearProgress /> : <></>
                         }
-
                     </Box>
-                ))}
-                {
-                    isLoading ? <LinearProgress /> : <></>
-                }
-            </Box>
-            <Divider />
+                    <Divider />
 
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-            />
-
-            {/* Preview */}
-            {attachedFile && (
-                <Box mt={1} p={1} bgcolor="#f0f0f0" borderRadius={2}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Typography variant="body2" fontWeight="bold">
-                            Attached: {attachedFile.name}
-                        </Typography>
-                        <IconButton onClick={clearAttachment} size="small">
-                            <ClearIcon style={{ height: "12", width: "12" }} />
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            gap: 1,
+                            mt: 1,
+                        }}
+                    >
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Type a message..."
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSend()
+                            }}
+                        />
+                        <IconButton color="primary" onClick={handleSend}>
+                            <SendIcon />
                         </IconButton>
-                    </div>
-                </Box>
-            )}
-
-            <Box
-                sx={{
-                    display: 'flex',
-                    gap: 1,
-                    mt: 1,
-                }}
-            >
-                <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Type a message..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSend()
-                    }}
-                />
-                <IconButton color="primary" onClick={handleSend}>
-                    <SendIcon />
-                </IconButton>
-                <IconButton color="primary" onClick={openFileDialog}>
-                    <AttachFileIcon />
-                </IconButton>
-            </Box>
+                    </Box>
+                </> : <>
+                    Select a Project to start conversation.
+                </>
+            }
         </Paper>
     )
 }

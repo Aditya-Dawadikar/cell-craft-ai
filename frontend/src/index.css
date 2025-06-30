@@ -1,0 +1,32 @@
+.split {
+    display: flex;
+    flex-direction: column;
+}
+
+.split>div {
+    overflow: auto;
+}
+
+.split .gutter {
+    background: transparent;
+    height: 8px;
+    position: relative;
+    cursor: row-resize;
+}
+
+.split .gutter::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 4px;
+    background-color: #aaa;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.split .gutter:hover::before {
+    background-color: #666;
+}

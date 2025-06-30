@@ -20,9 +20,12 @@ const chatSlice = createSlice({
         },
         setSession: (state, action: PayloadAction<any>)=>{
             state.session_id = action.payload.session_id
+        },
+        setConversation: (state, action: PayloadAction<ChatMessage[]>)=>{
+            state.messages = action.payload
         }
     }
 })
 
-export const {addMessage, clearMessages} = chatSlice.actions
+export const {addMessage, clearMessages, setConversation, setSession} = chatSlice.actions
 export default chatSlice.reducer

@@ -8,6 +8,7 @@ import dotenv
 from store import session_cache
 from routes import gemini_agent
 from routes import version_history
+from routes import sessions
 
 dotenv.load_dotenv()
 
@@ -53,6 +54,7 @@ app.mount("/static", StaticFiles(directory=SESSION_ROOT), name='static')
 
 app.include_router(gemini_agent.router)
 app.include_router(version_history.router)
+app.include_router(sessions.router)
 
 
 def save_sessions():
