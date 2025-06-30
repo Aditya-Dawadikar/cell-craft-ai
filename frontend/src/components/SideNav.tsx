@@ -61,7 +61,6 @@ const SideNav = () => {
                 return
             }
             const response = await createSession(selectedFile, sessionName)
-            console.log("Session created:", response.session_id)
 
             dispatch(addSession({
                 session_id: response.session_id,

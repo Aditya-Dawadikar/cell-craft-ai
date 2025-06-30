@@ -20,7 +20,7 @@ export const sendMessage = async (session_id: string, msg: string): Promise<any>
 }
 
 export const loadConversationHistory = async (session_id: string): Promise<any> =>{
-    const response = await fetch(`${BASE_URL}/chat-history/?session_id=${session_id}`)
+    const response = await fetch(`${BASE_URL}/chat-history?session_id=${session_id}`)
 
     if (!response.ok){
         throw new Error("Failed to load chat history")

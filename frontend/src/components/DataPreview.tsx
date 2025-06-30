@@ -45,8 +45,6 @@ const DataPreview = () => {
 
             const data = await getCommitFiles(sessionIdFromStore, commit_id)
 
-            console.log("commit files", data)
-
             setPanels([...data.files])
         }
     }
