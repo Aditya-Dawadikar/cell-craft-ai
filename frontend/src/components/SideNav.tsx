@@ -9,9 +9,11 @@ import {
     Dialog, DialogTitle, DialogContent,
     DialogActions, Button, TextField, InputLabel,
     Autocomplete,
-    Tooltip
+    Tooltip, IconButton, Menu, MenuItem
 } from '@mui/material'
-
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useState } from 'react';
 
 import SearchIcon from '@mui/icons-material/Search';
@@ -85,6 +87,19 @@ const SideNav = () => {
         }))
     }
 
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+    const [menuSession, setMenuSession] = useState<Session | null>(null)
+
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, session: Session) => {
+        setAnchorEl(event.currentTarget)
+        setMenuSession(session)
+    }
+
+    const handleMenuClose = () => {
+        setAnchorEl(null)
+        setMenuSession(null)
+    }
+
     return (
         <Box sx={{ width: '100%', height: '100vh', bgcolor: '#f5f5f5' }}>
             <Box sx={{ p: 2 }}>
@@ -149,17 +164,58 @@ const SideNav = () => {
                 <Typography variant="h6" sx={{ mt: 3 }}>
                     Projects
                 </Typography>
+                
                 <List>
-                    {sessionsList.map((session, index) => (
-                        <ListItem key={session.session_id} disablePadding>
-                            <ListItemButton onClick={() => {
-                                handleSelectSession(session)
-                            }}>
-                                <ListItemText primary={session.session_name} />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
+                    {sessionsList.map((session, index) => {
+                        const isActive = session.session_id === activeSession?.session_id
+                        return (
+                            <ListItem
+                                key={session.session_id}
+                                secondaryAction={
+                                    <>
+                                        <IconButton
+                                            edge="end"
+                                            aria-label="options"
+                                            onClick={(e) => handleMenuOpen(e, session)}
+                                        >
+                                            <MoreHorizIcon />
+                                        </IconButton>
+                                    </>
+                                }
+                                disablePadding
+                                sx={{ bgcolor: isActive ? '#e0e0e0' : 'transparent' }}
+                            >
+                                <ListItemButton onClick={() => handleSelectSession(session)}>
+                                    <ListItemText primary={session.session_name} />
+                                </ListItemButton>
+                            </ListItem>
+                        )
+                    })}
                 </List>
+                <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                >
+                    <MenuItem
+                        onClick={() => {
+                            console.log('Edit', menuSession)
+                            handleMenuClose()
+                        }}
+                    >
+                        <EditIcon />
+                        <span style={{ margin: "0px 10px" }}>Edit</span>
+                    </MenuItem>
+                    <MenuItem
+                        onClick={() => {
+                            console.log('Delete', menuSession)
+                            handleMenuClose()
+                        }}
+                    >
+                        <DeleteIcon />
+                        <span style={{ margin: "0px 10px" }}>Delete</span>
+                    </MenuItem>
+                </Menu>
             </Box>
 
             {/* Dialog Box */}
