@@ -144,7 +144,7 @@ const Chat = () => {
         }
     }
 
-    const pollHistory = async () => {
+    const fetchHistory = async () => {
         try {
 
             if (sessionIdFromStore && sessionIdFromStore !== "") {
@@ -175,9 +175,9 @@ const Chat = () => {
 
             fetchConversation()
 
-            pollHistory()
+            fetchHistory()
 
-            const intervalId = setInterval(pollHistory, 6 * 10 * 1000)
+            const intervalId = setInterval(fetchHistory, 6 * 10 * 1000)
 
             return () => { clearInterval(intervalId) }
         }
@@ -191,7 +191,7 @@ const Chat = () => {
         if (!sessionIdFromStore) return;
 
         fetchConversation();
-        pollHistory();
+        fetchHistory();
     }, [sessionIdFromStore]);
 
     return (

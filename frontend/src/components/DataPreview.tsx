@@ -69,17 +69,14 @@ const DataPreview = () => {
         <Paper
             elevation={2}
             sx={{
-                // height: '100%',
-                // maxHeight: 'calc(100vh - 30px)',
                 height: 'calc(100vh - 1em)',
-                p: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
             }}
             style={{ margin: "0.5em" }}
         >
-            <Stack direction="row" spacing={2} mb={2}>
+            <Stack direction="row" spacing={2} mb={2} m={2}>
 
                 <Autocomplete
                     sx={{ width: 400 }}
@@ -133,7 +130,8 @@ const DataPreview = () => {
                 style={{
                     height: '100%',
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    margin: "0.5em"
                 }}
             >
                 <Box
@@ -142,13 +140,13 @@ const DataPreview = () => {
                         borderRadius: "0.5em"
                     }}
                     sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {panels.length > 0 ? (
+                    {panels.length > 0 ?
                         <PanelGrid panels={panels} />
-                    ) : (
+                        :
                         <Typography variant="h6" color="textSecondary">
                             No Files to Show. Select a commit.
                         </Typography>
-                    )}
+                    }
                 </Box>
                 <Box
                     sx={{
@@ -158,12 +156,23 @@ const DataPreview = () => {
                         borderTopLeftRadius: 12,
                         borderTopRightRadius: 12,
                         overflow: 'auto',
-                        p: 2,
+                        flexGrow: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                     }}
                 >
-                    <ReactFlowProvider>
-                        <CommitDAG key={session?.session_id || 'default'} />
-                    </ReactFlowProvider>
+                    {
+                        session ? <>
+                            <ReactFlowProvider>
+                                <CommitDAG key={session?.session_id || 'default'} />
+                            </ReactFlowProvider>
+                        </> : (<>
+                            <Typography variant="h6" color="textSecondary">
+                                No Commit History to Show. Select a Project.
+                            </Typography>
+                        </>)
+                    }
                 </Box>
             </Split>
         </Paper>
