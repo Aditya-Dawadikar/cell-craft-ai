@@ -69,13 +69,14 @@ const DataPreview = () => {
         <Paper
             elevation={2}
             sx={{
-                height: 'calc(100vh - 32px)',
-                m: 1,
+                height: '100%',
+                maxHeight: 'calc(100vh - 30px)',
                 p: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
             }}
+            style={{ margin: "0.5em" }}
         >
             <Stack direction="row" spacing={2} mb={2}>
 
@@ -130,12 +131,14 @@ const DataPreview = () => {
                 className="split"
                 style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
             >
-                <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-                    {
-                        panels.length > 0 ?
-                            <PanelGrid panels={panels} /> :
-                            <><Typography>No Files to Show. Select a commit.</Typography></>
-                    }
+                <Box sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {panels.length > 0 ? (
+                        <PanelGrid panels={panels} />
+                    ) : (
+                        <Typography variant="h6" color="textSecondary">
+                            No Files to Show. Select a commit.
+                        </Typography>
+                    )}
                 </Box>
                 <Box
                     sx={{

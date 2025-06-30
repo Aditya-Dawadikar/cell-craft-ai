@@ -201,10 +201,10 @@ const Chat = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%',
-                maxHeight: 'calc(100vh - 32px)',
+                maxHeight: 'calc(100vh - 30px)',
                 p: 1,
-                m: 1,
             }}
+            style={{ margin: "0.5em" }}
         >
             {
                 session ? <>
@@ -233,8 +233,9 @@ const Chat = () => {
                                 {/* Message Bubble */}
                                 <Box
                                     sx={{
-                                        bgcolor: msg.sender === 'user' ? '#1976d2' : '#f1f1f1',
-                                        color: msg.sender === 'user' ? 'white' : 'black',
+                                        bgcolor: msg.sender === 'user' ? '#91e5ff' : '#f1f1f1',
+                                        // color: msg.sender === 'user' ? 'white' : 'black',
+                                        color: 'black',
                                         px: 2,
                                         py: 1,
                                         borderRadius: 2,
@@ -301,12 +302,12 @@ const Chat = () => {
                             </Box>
                         ))}
                         <div ref={bottomRef} />
-                        {
-                            isLoading ? <LinearProgress /> : <></>
-                        }
+
                     </Box>
                     <Divider />
-
+                    {
+                        isLoading ? <LinearProgress sx={{ margin: 1, height: 10 }} /> : <></>
+                    }
                     <Box
                         sx={{
                             display: 'flex',
@@ -329,7 +330,11 @@ const Chat = () => {
                         </IconButton>
                     </Box>
                 </> : <>
-                    Select a Project to start conversation.
+                    <Box sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Typography variant="h6" color="textSecondary">
+                            Select or Create a Project to start a conversation.
+                        </Typography>
+                    </Box>
                 </>
             }
         </Paper>
