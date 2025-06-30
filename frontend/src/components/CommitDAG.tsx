@@ -1,17 +1,21 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import ReactFlow, {
-  ReactFlowProvider,
   Background,
   Controls,
   useNodesState,
   useEdgesState,
   Position,
-  Handle
+  Handle,
+  useReactFlow
 } from 'reactflow'
 import { useSelector, useDispatch } from 'react-redux'
 import type { RootState } from '../store'
 import { setSelectedCommit } from '../slices/commitSlice'
 import type { Node, Edge } from 'reactflow'
+import { getVersionHistory } from '../services/commit'
+import CircularProgress from '@mui/material/CircularProgress';
+import { Box, Typography } from '@mui/material'
+
 
 // === Custom Commit Node ===
 export const CommitNode = ({ data }: { data: any }) => {
@@ -68,18 +72,24 @@ export const CommitNode = ({ data }: { data: any }) => {
   )
 }
 
-
 const nodeTypes = { commitNode: CommitNode }
 
 const CommitDAG = () => {
+
+  const { fitView } = useReactFlow()
+
   const dispatch = useDispatch()
 
-  const commits = useSelector((state: RootState) => state.commit.commits)
+  const [commits, setCommits] = useState([])
+
   const commitHead = useSelector((state: RootState) => state.commit.head)
   const selectedCommit = useSelector((state: RootState) => state.commit.selectedCommit)
 
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
+
+  const [isLoading, setIsLoading] = useState(false)
+  const [isError, SetIsError] = useState(false)
 
 
   const nodeSpacingX = 500
@@ -87,81 +97,102 @@ const CommitDAG = () => {
   const fileSpacingY = 50
 
   const session = useSelector((state: RootState) => state.session.activeSession)
+  let sessionIdFromStore = session?.session_id || ""
 
-  useEffect(() => {
-    setNodes([])
-    setEdges([])
-  }, [session?.session_id])
+  const resetView = async () => {
 
-  useEffect(() => {
-    const initialNodes: Node[] = []
-    const initialEdges: Edge[] = []
+    try {
+      if (session?.session_id && session?.session_id != "") {
+        setIsLoading(true)
+        const data = await getVersionHistory(sessionIdFromStore)
 
-    commits.forEach((commit, idx) => {
-      const baseX = idx * nodeSpacingX
-      const baseY = 100
+        setCommits(data.commits)
 
-      // Commit node
-      initialNodes.push({
-        id: commit.commit_id,
-        type: 'commitNode',
-        data: { ...commit },
-        position: { x: baseX, y: baseY },
-      })
+        let initialNodes: Node[] = []
+        let initialEdges: Edge[] = []
 
-      // Parent edge
-      if (commit.parent_id) {
-        initialEdges.push({
-          id: `${commit.parent_id}->${commit.commit_id}`,
-          source: commit.parent_id,
-          sourceHandle: 'main',
-          target: commit.commit_id,
-          targetHandle: 'incoming',
-          animated: true,
-          type: 'smoothstep',
-          style: { stroke: '#888' },
-        })
-      }
+        data.commits.map((commit: any, idx: number) => {
+          const baseX = idx * nodeSpacingX
+          const baseY = 100
 
-      // File nodes
-      if (commit.generated_files?.length) {
-        commit.generated_files.forEach((file, i) => {
-          const fileId = `${commit.commit_id}-file-${i}`
-
+          // Commit node
           initialNodes.push({
-            id: fileId,
-            type: 'default',
-            data: { label: file.title },
-            position: {
-              x: baseX + fileOffsetX,
-              y: baseY + 100 + i * fileSpacingY,
-            },
-            targetPosition: Position.Left,
-            style: {
-              backgroundColor: '#fef5d3',
-              border: '1px solid #ccc',
-              borderRadius: 4,
-              padding: 6,
-              width: 140,
-              fontSize: '0.75rem',
-              textAlign: 'center',
-            },
+            id: commit.commit_id,
+            type: 'commitNode',
+            data: { ...commit },
+            position: { x: baseX, y: baseY },
           })
 
-          initialEdges.push({
-            id: `edge-${commit.commit_id}-${fileId}`,
-            source: commit.commit_id,
-            sourceHandle: 'files',
-            target: fileId,
-            type: 'smoothstep',
-          })
+          // Parent edge
+          if (commit.parent_id) {
+            initialEdges.push({
+              id: `${commit.parent_id}->${commit.commit_id}`,
+              source: commit.parent_id,
+              sourceHandle: 'main',
+              target: commit.commit_id,
+              targetHandle: 'incoming',
+              animated: true,
+              type: 'smoothstep',
+              style: { stroke: '#888' },
+            })
+          }
+
+          // File nodes
+          if (commit.generated_files?.length) {
+            commit.generated_files.forEach((file, i) => {
+              const fileId = `${commit.commit_id}-file-${i}`
+
+              initialNodes.push({
+                id: fileId,
+                type: 'default',
+                data: { label: file.title },
+                position: {
+                  x: baseX + fileOffsetX,
+                  y: baseY + 100 + i * fileSpacingY,
+                },
+                targetPosition: Position.Left,
+                style: {
+                  backgroundColor: '#fef5d3',
+                  border: '1px solid #ccc',
+                  borderRadius: 4,
+                  padding: 6,
+                  width: 140,
+                  fontSize: '0.75rem',
+                  textAlign: 'center',
+                },
+              })
+
+              initialEdges.push({
+                id: `edge-${commit.commit_id}-${fileId}`,
+                source: commit.commit_id,
+                sourceHandle: 'files',
+                target: fileId,
+                type: 'smoothstep',
+              })
+            })
+          }
         })
-      }
-    })
 
-    setNodes(initialNodes)
-    setEdges(initialEdges)
-  }, [commits])
+        setNodes(initialNodes)
+        setEdges(initialEdges)
+        fitView()
+
+        setIsLoading(false)
+      }
+      else {
+        console.log("Session ID not set in store yet")
+      }
+    } catch (err) {
+      setIsLoading(false)
+      SetIsError(true)
+      console.log("Error fetching version history:", err)
+    }
+
+  }
+
+  useEffect(() => {
+    resetView()
+  }, [session])
 
   useEffect(() => {
     if (!selectedCommit) return
@@ -183,12 +214,29 @@ const CommitDAG = () => {
         }
       })
     )
+    resetView()
   }, [selectedCommit, commitHead])
 
   return (
-    <ReactFlowProvider>
-      <div style={{ width: '100%', height: '100%', overflow: 'auto' }}>
-        <ReactFlow
+    <div style={{ width: '100%', height: "100%", overflow: 'auto' }}>
+      {
+        isLoading === true ? <Box
+          sx={{
+            flexGrow: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: "100%"
+          }}>
+          <CircularProgress disableShrink />
+        </Box> : isError === true ? <Box
+          sx={{
+            height: "100%", flexGrow: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+          <Typography variant="h6" color="textSecondary">
+            Something went wrong ¯\_(ツ)_/¯
+          </Typography>
+        </Box> : <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
@@ -207,8 +255,9 @@ const CommitDAG = () => {
           <Background />
           <Controls />
         </ReactFlow>
-      </div>
-    </ReactFlowProvider>
+      }
+
+    </div>
   )
 }
 

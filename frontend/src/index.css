@@ -16,7 +16,8 @@ body {
     height: 8px;
     position: relative;
     cursor: row-resize;
-    margin-bottom: 0.4em;
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
 }
 
 .split .gutter::before {

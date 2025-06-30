@@ -46,41 +46,40 @@ const PanelGrid = ({ panels }: Props) => {
         <>
             <Grid container spacing={2}>
                 {panels.map((panel, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={index}>
-                        <Paper elevation={3} sx={{ m: 1, height: '100%' }}>
-                            <div style={{ padding: "0.5em" }}>
-
+                    <Grid item xs={12} sm={12} md={12} key={index}>
+                        <Paper elevation={3} sx={{ m: 1 }}>
+                            <Stack
+                                m={1}
+                                direction="row"
+                                alignItems="center"
+                                justifyContent="space-between">
+                                <Typography gutterBottom>
+                                    {panel.title}
+                                </Typography>
                                 <Stack direction="row"
-                                    alignItems="center"
-                                    justifyContent="space-between">
-                                    <Typography gutterBottom>
-                                        {panel.title}
-                                    </Typography>
-                                    <Stack direction="row"
-                                        sx={{
-                                            justifyContent: 'flex-end'
-                                        }}>
+                                    sx={{
+                                        justifyContent: 'flex-end'
+                                    }}>
 
-                                        <IconButton>
-                                            <FullscreenIcon onClick={() => { setEnlargedPanel(panel) }} />
-                                        </IconButton>
-                                        <IconButton onClick={() => { handleDownload(BASE_URL + panel.url, panel.title) }}>
-                                            <DownloadIcon />
-                                        </IconButton>
-                                    </Stack>
+                                    <IconButton>
+                                        <FullscreenIcon onClick={() => { setEnlargedPanel(panel) }} />
+                                    </IconButton>
+                                    <IconButton onClick={() => { handleDownload(BASE_URL + panel.url, panel.title) }}>
+                                        <DownloadIcon />
+                                    </IconButton>
                                 </Stack>
+                            </Stack>
 
-
+                            <Box m={1}>
                                 {panel.type === 'dataframe' && <CSVPreview url={panel.url} />}
                                 {panel.type === 'readme' && <MarkdownFromUrl url={panel.url} />}
                                 {panel.type === 'chart' && <ImageFromUrl url={panel.url} title={panel.title} />}
-                            </div>
+                            </Box>
                         </Paper>
                     </Grid>
                 ))}
             </Grid>
             <PanelPreviewDialog panel={enlargedPanel} onClose={() => setEnlargedPanel(null)} />
-
         </>
     )
 }
@@ -107,16 +106,8 @@ const CSVPreview = ({ url }: { url: string }) => {
 
     return (
         <Box
+            sx={{ maxHeight: 300, overflowY: 'auto' }}
             component="table"
-            sx={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                '& td, & th': {
-                    border: '1px solid #ddd',
-                    padding: '4px',
-                    fontSize: '0.75rem',
-                },
-            }}
         >
             <thead>
                 <tr>
@@ -149,15 +140,10 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
     }, [url])
 
     return (
-        <Box sx={{ maxHeight: 300, overflowY: 'auto' }} style={{marginY:"0.5em"}}>
-            <div style={{
-                background: "#f2fcff",
-                padding: "1em",
-                boxShadow: "inset 0 0 10px rgba(0, 0, 0, 0.1)",
-                borderRadius: "6px"
-            }}>
-                <ReactMarkdown>{markdown}</ReactMarkdown>
-            </div>
+        <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+            <ReactMarkdown>
+                {markdown}
+            </ReactMarkdown>
         </Box>
     )
 }
@@ -167,12 +153,7 @@ const ImageFromUrl = ({ url, title }: { url: string, title: string }) => {
         component="img"
         src={BASE_URL + url}
         alt={title}
-        sx={{
-            width: '100%',
-            maxHeight: 300,
-            objectFit: 'contain',
-            border: "solid 1px #ccc"
-        }}
+        sx={{ maxHeight: 300 }}
     />)
 }
 
