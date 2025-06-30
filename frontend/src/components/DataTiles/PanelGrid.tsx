@@ -62,7 +62,7 @@ const PanelGrid = ({ panels }: Props) => {
                                         }}>
 
                                         <IconButton>
-                                            <FullscreenIcon onClick={()=>{setEnlargedPanel(panel)}} />
+                                            <FullscreenIcon onClick={() => { setEnlargedPanel(panel) }} />
                                         </IconButton>
                                         <IconButton onClick={() => { handleDownload(BASE_URL + panel.url, panel.title) }}>
                                             <DownloadIcon />
@@ -149,8 +149,13 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
     }, [url])
 
     return (
-        <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
-            <div style={{ background: "#ffeede", padding: "1em" }}>
+        <Box sx={{ maxHeight: 300, overflowY: 'auto' }} style={{marginY:"0.5em"}}>
+            <div style={{
+                background: "#f2fcff",
+                padding: "1em",
+                boxShadow: "inset 0 0 10px rgba(0, 0, 0, 0.1)",
+                borderRadius: "6px"
+            }}>
                 <ReactMarkdown>{markdown}</ReactMarkdown>
             </div>
         </Box>
