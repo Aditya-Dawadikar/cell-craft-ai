@@ -69,8 +69,9 @@ const DataPreview = () => {
         <Paper
             elevation={2}
             sx={{
-                height: '100%',
-                maxHeight: 'calc(100vh - 30px)',
+                // height: '100%',
+                // maxHeight: 'calc(100vh - 30px)',
+                height: 'calc(100vh - 1em)',
                 p: 1,
                 display: 'flex',
                 flexDirection: 'column',
