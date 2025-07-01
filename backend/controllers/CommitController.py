@@ -148,3 +148,14 @@ async def query_commits(
     ordering = [(order_by, DESCENDING if descending else ASCENDING)]
 
     return await Commit.find(query).sort(ordering).skip(skip).limit(limit).to_list()
+
+async def get_commits_by_session_id(session_id: str,
+                                    descending: bool=True)->List[Commit]:
+    query = {}
+
+    if session_id:
+        query["session_id"] = ObjectId(session_id)
+
+    ordering = [("timestamp", DESCENDING if descending else ASCENDING)]
+
+    return await Commit.find(query).sort(ordering).to_list()

@@ -12,10 +12,10 @@ from pymongo import ASCENDING, DESCENDING
 # === Create a new session ===
 async def create_session(
     session_name: str,
-    head: str,
-    last_csv_path: str,
-    history_path: str,
-    session_dir: str
+    head: Optional[str] = None,
+    last_csv_path: Optional[str] = None,
+    history_path: Optional[str] = None,
+    session_dir: Optional[str] = None
 ) -> Session:
     now = datetime.utcnow()
     meta_data = MetaData(created_at=now, last_updated_at=now)
@@ -38,10 +38,9 @@ async def create_session(
 async def get_session_by_session_id(session_id: str) -> Optional[Session]:
     try:
         oid = ObjectId(session_id)
+        return await Session.find_one(Session.session_id == oid)
     except Exception:
         return None
-    return await Session.find_one(Session.session_id == oid)
-
 
 # === Update a session ===
 async def update_session(

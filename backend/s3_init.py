@@ -21,3 +21,8 @@ async def init_s3():
         print("S3 connection successful.")
     except Exception as e:
         print("Error connecting to S3:", e)
+
+def get_s3():
+    if s3 is None:
+        raise RuntimeError("S3 client is not initialized yet. Call init_s3() first.")
+    return s3
