@@ -10,3 +10,4 @@ dotenv
 beanie
 motor
 pymongo
+boto3
