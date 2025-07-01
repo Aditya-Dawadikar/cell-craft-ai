@@ -9,6 +9,11 @@ from store import session_cache
 from routes import gemini_agent
 from routes import version_history
 from routes import sessions
+from routes import db_commits
+from routes import db_sessions
+
+from db_init import init_db
+from s3_init import init_s3
 
 dotenv.load_dotenv()
 
@@ -26,6 +31,8 @@ SESSION_ROOT = os.getenv("SESSION_ROOT","session_data")
 SESSION_STORE_FILE = os.path.join(SESSION_ROOT, "session_store.json")
 SESSION_FILES_DIR = os.path.join(SESSION_ROOT, "session_files")
 
+MONGODB_CONNECTION_STRING = os.getenv("MONGODB_CONNECTION_STRING")
+
 origins = [
     "http://localhost:5173",
 ]
@@ -38,23 +45,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# static_app = FastAPI()
-# static_app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
-# static_app.mount("/", StaticFiles(directory=SESSION_ROOT), name='static')
-# app.mount("/static", static_app)
-
 app.mount("/static", StaticFiles(directory=SESSION_ROOT), name='static')
 
 app.include_router(gemini_agent.router)
 app.include_router(version_history.router)
 app.include_router(sessions.router)
+app.include_router(db_sessions.router)
+app.include_router(db_commits.router)
 
 
 def save_sessions():
@@ -62,7 +59,14 @@ def save_sessions():
         json.dump(session_cache, f, indent=2)
 
 @app.on_event("startup")
-def setup_session_storage():
+async def setup_session_storage():
+
+    # initialize MongoDB
+    await init_db(MONGODB_CONNECTION_STRING)
+
+    # initialize S3 storage
+    await init_s3()
+
     # Create folder structure
     os.makedirs(SESSION_FILES_DIR, exist_ok=True)
 

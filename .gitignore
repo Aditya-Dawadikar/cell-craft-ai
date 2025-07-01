@@ -46,3 +46,6 @@ build/
 
 .env
 backend/session_data/
+**/session_files
+
+secrets.txt

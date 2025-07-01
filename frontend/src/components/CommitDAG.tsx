@@ -124,10 +124,10 @@ const CommitDAG = () => {
           })
 
           // Parent edge
-          if (commit.parent_id) {
+          if (commit.parent_commit) {
             initialEdges.push({
               id: `${commit.parent_id}->${commit.commit_id}`,
-              source: commit.parent_id,
+              source: commit.parent_commit,
               sourceHandle: 'main',
               target: commit.commit_id,
               targetHandle: 'incoming',

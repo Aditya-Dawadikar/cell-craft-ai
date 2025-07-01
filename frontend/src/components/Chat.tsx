@@ -96,7 +96,7 @@ const Chat = () => {
                 commit_data: result.commit_data
             } as ChatMessage))
 
-            await pollHistory()
+            await fetchHistory()
 
             if (result.mode === "CODE") {
                 dispatch(setSelectedCommit(result.commit_data))

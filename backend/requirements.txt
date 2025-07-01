@@ -7,3 +7,7 @@ python-multipart
 aiofiles
 scikit-learn
 dotenv
+beanie
+motor
+pymongo
+boto3

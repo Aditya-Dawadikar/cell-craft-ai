@@ -1,16 +1,15 @@
 import os
 from fastapi import APIRouter, Query
-from fastapi.responses import JSONResponse, FileResponse
-from store import session_cache
-from session_management import list_commits
-import posixpath
-import json
+from fastapi.responses import JSONResponse
+from controllers.SessionController import (get_session_by_session_id)
+from controllers.CommitController import (query_commits, get_commit_by_id)
+from storage.storage_utils import get_file_list, generate_presigned_get_url
 
 router = APIRouter()
 
 @router.get("/chat-history")
-def get_chat_history(session_id: str, last_10: bool=True):
-    session = session_cache.get(session_id, None)
+async def get_chat_history(session_id: str, last_10: bool=True):
+    session = await get_session_by_session_id(session_id)
 
     if session is None:
         return JSONResponse({
@@ -18,117 +17,70 @@ def get_chat_history(session_id: str, last_10: bool=True):
             "msg": f"session_id {session_id} not found"
         })
     
-    with open(session["history_path"], "r") as f:
-        history = json.load(f)
+    history = await query_commits(session_id=session_id, descending=False)
+    
+    commit_dicts = [commit.model_dump(mode="json") for commit in history]
 
-        if last_10 is True:
-            history = history[-10:]
-
-        res = {
+    res = {
             "session_id": session_id,
-            "chat_history": history
+            "chat_history": commit_dicts
         }
 
-        return JSONResponse(res)
-    
-    return JSONResponse({
-        "success": False,
-        "message": "Some error occured while loading conversation history."
-    })
+    return JSONResponse(res)
+
 
 
 @router.get("/version-history")
-def get_version_history(session_id:str):
-    session_data = session_cache.get(session_id, None)
+async def get_version_history(session_id:str):
+    session = await get_session_by_session_id(session_id)
 
-    if session_data is None:
+    if session is None:
         return JSONResponse({
             "success": False,
             "msg": f"session_id {session_id} not found"
         })
 
-    version_history = list_commits(session_data)
+    history = await query_commits(session_id=session_id, descending=False)
 
-    session = session_cache.get(session_id)
-    if not session:
-        return JSONResponse(status_code=404, content={"error": "Invalid session ID"})
-
-    for version in version_history:
-        version["generated_files"] = get_commit_file_urls(session, version.get("commit_id"))
+    commit_dicts = [commit.model_dump(mode="json") for commit in history]
 
     res = {
         "session_id": session_id,
-        "head": session_data.get("head", None),
-        "commits": version_history
+        "head": session.head,
+        "commits": commit_dicts
     }
 
     return JSONResponse(res)
 
 @router.get("/list_commit_files")
-def list_commit_files(session_id: str = Query(...), commit_id: str = Query(...)):
-    session = session_cache.get(session_id)
-    if not session:
-        return JSONResponse(status_code=404, content={"error": "Invalid session ID"})
-
-
+async def list_commit_files(session_id: str = Query(...), commit_id: str = Query(...)):
     try:
-        static_urls = get_commit_file_urls(session, commit_id)
+        # 1. Confirm session exists
+        session = await get_session_by_session_id(session_id)
+        commit = await get_commit_by_id(commit_id)
+        if not session:
+            return JSONResponse(status_code=404, content={"error": "Invalid session ID"})
+
+        # 2. List all files under commit in S3
+        s3_keys = await get_file_list(bucket=os.getenv("S3_BUCKET_NAME"), session_id=session_id, commit_id=commit_id)
+
+        if not s3_keys:
+            return JSONResponse(status_code=404, content={"error": "No files found in this commit"})
+
+        # 3. Generate signed GET URLs
+        files = []
+
+        for file in commit.generated_files:
+            files.append({
+                "title": file.title,
+                "type": file.type,
+                "url": await generate_presigned_get_url(bucket=os.getenv("S3_BUCKET_NAME"), s3_file_path=file.url)
+            })
+
+        return JSONResponse(content={
+            "commit_id": commit_id,
+            "files": files
+        })
+
     except Exception as e:
-        return JSONResponse(status_code=404, content=e)
-
-    return JSONResponse(content={"commit_id": commit_id, "files": static_urls})
-
-@router.get("/download_commit_file")
-def download_commit_file(
-    session_id: str = Query(...),
-    commit_id: str = Query(...),
-    filename: str = Query(...)
-):
-    session = session_cache.get(session_id)
-    if not session:
-        return JSONResponse(status_code=404, content={"error": "Invalid session ID"})
-
-    file_path = os.path.join(session["session_dir"], commit_id, filename)
-
-    if not os.path.exists(file_path):
-        return JSONResponse(status_code=404, content={"error": "File not found in commit folder"})
-
-    return FileResponse(path=file_path, filename=filename)
-
-def get_commit_file_urls(session, commit_id):
-    commit_folder = os.path.join(session["session_dir"], commit_id)
-    if not os.path.exists(commit_folder):
-        raise Exception({"error": "Commit folder not found"})
-
-    static_base_path = os.getenv("SESSION_ROOT", "session_data")
-    
-    static_urls = []
-
-    for fname in os.listdir(commit_folder):
-        abs_path = os.path.join(commit_folder, fname)
-        rel_path = os.path.relpath(abs_path, start=static_base_path)
-        url_path = posixpath.join("/static", *rel_path.split(os.sep))  # normalize to forward slashes
-
-        file_type = ""
-
-        ext = url_path.split('.')[-1]
-        if ext == 'csv':
-            file_type = "dataframe"
-        elif ext in ['png','jpg','jpeg']:
-            file_type = 'chart'
-        elif ext == 'md':
-            file_type = "readme"
-        else:
-            file_type = ext
-
-        file_name = url_path.split('/')[-1]
-
-        url_object = {
-            "type": file_type,
-            "title": file_name,
-            "url": url_path 
-        }
-
-        static_urls.append(url_object)
-    
-    return static_urls
+        return JSONResponse(status_code=500, content={"error": str(e)})

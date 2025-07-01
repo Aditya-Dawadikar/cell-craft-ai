@@ -1,16 +1,9 @@
 import os
 import traceback
-from fastapi import APIRouter, File, UploadFile, Form, Query
-from fastapi.responses import JSONResponse, FileResponse
-from uuid import uuid4
-from store import session_cache
-from session_management import (create_new_session,
-                                apply_transform_and_checkpoint,
-                                update_history,
-                                branch_from_commit,
-                                set_head,
-                                generate_commit_id)
-import ast
+from fastapi import APIRouter, Form
+from fastapi.responses import JSONResponse
+from session_management_2 import (apply_transform_and_checkpoint,
+                                  branch_from_commit)
 import json
 import re
 import pandas as pd
@@ -18,13 +11,21 @@ import numpy as np
 import sklearn
 import matplotlib.pyplot as plt
 import seaborn as sns
-import datetime
-from routes.version_history import get_commit_file_urls
+from controllers.SessionController import (get_session_by_session_id,
+                                           update_session)
+from controllers.CommitController import (create_commit,
+                                          get_commits_by_session_id,
+                                          update_commit)
+from s3_init import get_s3
+from storage.storage_utils import (upload_commit_folder)
+from models.requestModels.commit import GeneratedFile
 
 from google import genai
 
 import dotenv
 dotenv.load_dotenv()
+
+BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 
 # Load your API key (from .env or hardcoded for testing)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -39,22 +40,33 @@ router = APIRouter()
 
 @router.post("/transform_csv/")
 async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
-    session = session_cache.get(session_id)
-    if not session:
-        return JSONResponse(content={"error": "Invalid session ID"}, status_code=400)
-
     try:
-        df = pd.read_csv(session["last_csv_path"])
+        session = await get_session_by_session_id(session_id=session_id)
 
-        # Build changelog from history
-        try:
-            with open(session["history_path"], "r") as f:
-                history = json.load(f)
-        except:
-            history = []
+        if not session:
+            return JSONResponse(content={"error": "Invalid session ID"}, status_code=400)
+    
+        # 2. Ensure latest CSV is downloaded
+        s3_key = session.last_csv_path  # e.g., session_files/<session_id>/<commit_id>/<commit_id>.csv
+        local_path = os.path.join("session_files", s3_key)
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+        s3 = get_s3()
+
+        if not os.path.exists(local_path):
+            s3.download_file(BUCKET_NAME, s3_key, local_path)
+
+        df = pd.read_csv(local_path)
+
+        # 3. Get commit history from DB
+        all_commits = await get_commits_by_session_id(session_id)
+        history = sorted(
+            [c for c in all_commits if c.success],
+            key=lambda c: c.timestamp
+        )
 
         key_step_changelog = "\n".join(
-            [f"- {item['key_steps']}" for item in history if item.get("success")]
+            [f"- {c.commit_id}:{c.key_steps}" for c in history if c.key_steps]
         )
 
         df_preview = df.head(5).to_csv(index=False)
@@ -147,98 +159,91 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
 
         if parsed["mode"] == "CHAT":
             # handle chat response
-            return handle_chat_response(session_id, session, query, parsed)
+            return await handle_chat_response(session_id, session, query, parsed)
         elif parsed["mode"] == "CODE":
             # handle code response
-            return handle_code_response(session_id, session, query, parsed, df)
+            return await handle_code_response(session_id, session, query, parsed, df)
         elif parsed["mode"] == "CONTEXT":
-            return handle_context_change(session_id, session, parsed)
+            return await handle_context_change(session_id, parsed)
         else:
             # invalid LLM response
-            pass
+            return JSONResponse(content={"error": "Invalid LLM response"}, status_code=400)
 
     except Exception as e:
         traceback.print_exc()
         print(e)
         return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
 
-@router.get("/download_csv")
-def download_csv(session_id: str = Query(...), commit_id: str = Query(...)):
-    session = session_cache.get(session_id)
-    if not session:
-        return JSONResponse(status_code=404, content={"error": "Invalid session ID"})
-
-    session_dir = session.get("session_dir")
-    if not session_dir:
-        return JSONResponse(status_code=500, content={"error": "Session directory missing"})
-
-    file_name = f"{commit_id}.csv"
-    file_path = os.path.join(session_dir, file_name)
-
-    if not os.path.isfile(file_path):
-        return JSONResponse(status_code=404, content={"error": f"CSV file for commit {commit_id} not found"})
-
-    return FileResponse(
-        path=file_path,
-        filename=file_name,
-        media_type="text/csv"
-    )
-
-def handle_code_response(session_id, session, query, parsed, df):
+async def handle_code_response(session_id, session, query, parsed, df):
     key_steps = parsed["key_steps"]
     code = parsed["executable_code"]
     response = parsed["response"]
 
     # Prepare commit ID and folder
-    parent_commit = session.get("head")
-    commit_content = json.dumps(parsed, sort_keys=True)
-    commit_id = generate_commit_id(commit_content)
+    parent_commit = session.head
 
-    commit_folder = os.path.join(session["session_dir"], commit_id)
-    os.makedirs(commit_folder, exist_ok=True)
+    # Step 1: Create commit document early
+    commit_doc = await create_commit(
+        session_id=session_id,
+        parent_commit=parent_commit,
+        query=query,
+        mode="CODE",
+        key_steps=key_steps,
+        response=response,
+        code=code,
+        generated_files=[],
+        success=True,
+        error=None
+    )
+    commit_id = str(commit_doc.commit_id)
 
-    # Track files before exec
-    existing_files = set(os.listdir(commit_folder))
+    # Step 2: Prepare commit directory (local)
+    commit_dir = os.path.join("session_files", session_id, commit_id)
+    os.makedirs(commit_dir, exist_ok=True)
 
-    # Globals and locals for exec
-    safe_globals = {
-        "__builtins__": __builtins__,
-        "pd": pd,
-        "np": np,
-        "sklearn": sklearn,
-        "plt": plt,
-        "sns": sns
-    }
-    local_vars = {
-        "df": df,
-        "commit_dir": commit_folder  # LLM will use this for saving files
-    }
-
+    # Step 3: Execute the LLM code
     try:
-        exec(code, safe_globals, local_vars)
-
-        new_files = get_commit_file_urls(session, commit_id)
-
-        df = local_vars["df"]
-
-        step = {
-            "query": query,
-            "mode": "CODE",
-            "response": response,
-            "key_steps": key_steps,
-            "code": code,
-            "generated_files": new_files,
-            "success": True,
-            "error": None
+        safe_globals = {
+            "__builtins__": __builtins__,
+            "pd": pd,
+            "np": np,
+            "sklearn": sklearn,
+            "plt": plt,
+            "sns": sns
+        }
+        local_vars = {
+            "df": df,
+            "commit_dir": commit_dir
         }
 
-        updated_session, commit_data = apply_transform_and_checkpoint(session, df, step, commit_id)
-        session_cache[session_id] = updated_session
+        exec(code, safe_globals, local_vars)
+        df = local_vars["df"]
 
-        df_head = df.head(5).copy()
-        df_head = df_head.applymap(lambda x: str(x) if isinstance(x, (pd.Timestamp, datetime.datetime)) else x)
+        # Step 4: Save transformed CSV
+        csv_name = f"{commit_id}.csv"
+        csv_path = os.path.join(commit_dir, csv_name)
+        df.to_csv(csv_path, index=False)
 
-        # head_preview = df.head(5).to_dict(orient="records") if not df.empty else []
+        # Step 5: Upload all generated files in commit folder
+        uploaded_files = await upload_commit_folder(
+            bucket=BUCKET_NAME,
+            local_folder_path=commit_dir,
+            session_id=session_id,
+            commit_id=commit_id
+        )
+
+        # Step 6: Update commit with file metadata
+        generated_files = [
+            GeneratedFile(**f) for f in uploaded_files
+        ]
+        await update_commit(commit_id, generated_files=generated_files)
+
+        # Step 7: Update session head and last_csv_path
+        await update_session(
+            session_id=session_id,
+            head=commit_id,
+            last_csv_path=uploaded_files[0]["url"]  # CSV path
+        )
 
         return JSONResponse(content={
             "success": True,
@@ -246,29 +251,20 @@ def handle_code_response(session_id, session, query, parsed, df):
             "response": response,
             "code": code,
             "key_steps": key_steps,
-            "df_head": df_head.to_dict(orient="records"),
-            "generated_files": new_files,
+            # "df_head": df_head.to_dict(orient="records"),
+            "generated_files": uploaded_files,
             "commit_data": {
-                "commit_id": commit_data["commit_id"],
-                "parent_id": commit_data["parent_commit"],
-                "timestamp": commit_data["timestamp"]
+                "commit_id": commit_id,
+                "parent_id": parent_commit,
+                "timestamp": commit_doc.timestamp
             }
         })
 
     except Exception as exec_err:
         traceback.print_exc()
 
-        step = {
-            "query": query,
-            "mode": "CODE",
-            "response": response,
-            "key_steps": key_steps,
-            "code": code,
-            "success": False,
-            "error": str(exec_err)
-        }
-
-        _, _ = apply_transform_and_checkpoint(session, df, step)
+        # Update commit as failed
+        await update_commit(commit_id, success=False, error=str(exec_err))
 
         return JSONResponse(content={
             "success": False,
@@ -279,45 +275,56 @@ def handle_code_response(session_id, session, query, parsed, df):
             "key_steps": key_steps
         }, status_code=500)
 
-
-def handle_chat_response(session_id, session, query, parsed):
+async def handle_chat_response(session_id, session, query, parsed):
     try:
         llm_response_text = parsed["response"]
 
-        step = {
-                    "query": query,
-                    "mode": "CHAT",
-                    "response": llm_response_text,
-                    "key_steps": None,
-                    "code": None,
-                    "success": True,
-                    "error": None
-                }
+        commit_doc = await create_commit(
+            session_id=session_id,
+            parent_commit=str(session.head),
+            query=query,
+            mode="CHAT",
+            key_steps=None,
+            response=llm_response_text,
+            code=None,
+            generated_files=[],
+            success=True,
+            error=None
+        )
         
-        _ = update_history(session, step)
+        # 2. Update session HEAD
+        await update_session(
+            session_id=session_id,
+            head=str(commit_doc.commit_id)
+        )
 
+        # 3. Return response
         return JSONResponse(content={
-                    "success": True,
-                    "mode": "CHAT",
-                    "response": llm_response_text,
-                    "code": None,
-                    "key_steps": None,
-                    "generated_files": [],
-                    "head": None
-                })
+            "success": True,
+            "mode": "CHAT",
+            "response": llm_response_text,
+            "code": None,
+            "key_steps": None,
+            "generated_files": [],
+            "head": str(commit_doc.commit_id)
+        })
+
     except Exception as e:
         traceback.print_exc()
-        print(e)
+        return JSONResponse(content={
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
-def handle_context_change(session_id, session, parsed):
+async def handle_context_change(session_id: str, parsed):
     try:
         action = parsed.get("action")
         commit_id = parsed.get("target_commit_id")
         response = parsed["response"]
 
         if action == "checkout":
-            updated_session = set_head(session, commit_id)
-            session_cache[session_id] = updated_session
+            # Move HEAD to a previous commit
+            await update_session(session_id=session_id, head=commit_id)
             return JSONResponse(content={
                 "success": True,
                 "mode": "CONTEXT",
@@ -327,14 +334,14 @@ def handle_context_change(session_id, session, parsed):
             })
 
         elif action == "branch":
-            updated_session = branch_from_commit(session, commit_id)
-            session_cache[session_id] = updated_session
+            # Fork from a previous commit
+            _, new_commit = await branch_from_commit(session_id, commit_id)
             return JSONResponse(content={
                 "success": True,
                 "mode": "CONTEXT",
                 "response": response,
                 "action": "branch",
-                "new_head": updated_session["head"],
+                "new_head": str(new_commit.commit_id),
                 "message": f"Branched from commit {commit_id}"
             })
 
@@ -344,6 +351,11 @@ def handle_context_change(session_id, session, parsed):
             "response": response,
             "error": "Invalid context action"
         }, status_code=400)
+
     except Exception as e:
         traceback.print_exc()
-        print(e)
+        return JSONResponse(content={
+            "success": False,
+            "mode": "CONTEXT",
+            "error": str(e)
+        }, status_code=500)
