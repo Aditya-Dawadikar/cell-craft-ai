@@ -16,7 +16,7 @@ function App() {
 
   const loadSessionList = async () => {
     const data = await getSessionList()
-    dispatch(loadSessions(data.sessions))
+    dispatch(loadSessions(data))
   }
 
   useEffect(() => {

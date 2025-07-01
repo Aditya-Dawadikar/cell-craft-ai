@@ -15,8 +15,6 @@ interface Props {
     panels: Panel[]
 }
 
-const BASE_URL = import.meta.env.VITE_BASE_URL
-
 
 const PanelGrid = ({ panels }: Props) => {
 
@@ -64,7 +62,7 @@ const PanelGrid = ({ panels }: Props) => {
                                     <IconButton>
                                         <FullscreenIcon onClick={() => { setEnlargedPanel(panel) }} />
                                     </IconButton>
-                                    <IconButton onClick={() => { handleDownload(BASE_URL + panel.url, panel.title) }}>
+                                    <IconButton onClick={() => { handleDownload(panel.url, panel.title) }}>
                                         <DownloadIcon />
                                     </IconButton>
                                 </Stack>
@@ -89,7 +87,7 @@ const CSVPreview = ({ url }: { url: string }) => {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        fetch(BASE_URL + url)
+        fetch(url)
             .then((res) => res.text())
             .then((csv) => {
                 const result = Papa.parse<string[]>(csv, { skipEmptyLines: true })
@@ -99,7 +97,7 @@ const CSVPreview = ({ url }: { url: string }) => {
                     setError('Empty CSV')
                 }
             })
-            .catch(() => setError('Failed to load CSV'))
+            .catch((err) => setError(`Failed to load CSV \n${err}`))
     }, [url])
 
     if (error) return <Typography color="error">{error}</Typography>
@@ -133,7 +131,7 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
     const [markdown, setMarkdown] = useState('Loading...')
 
     useEffect(() => {
-        fetch(BASE_URL + url)
+        fetch(url)
             .then((res) => res.text())
             .then(setMarkdown)
             .catch(() => setMarkdown('Failed to load markdown'))
@@ -151,7 +149,7 @@ const MarkdownFromUrl = ({ url }: { url: string }) => {
 const ImageFromUrl = ({ url, title }: { url: string, title: string }) => {
     return (<Box
         component="img"
-        src={BASE_URL + url}
+        src={url}
         alt={title}
         sx={{ maxHeight: 300 }}
     />)
