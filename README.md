@@ -6,7 +6,7 @@
 
 ---
 
-## 🚀 Features
+## Features
 
 - 💬 **Natural language queries**: Users can request transformations or analysis using plain English.
 - 🤖 **LLM-powered transformation engine**: Utilizes Gemini to generate Pandas/Numpy/Matplotlib code.
@@ -16,7 +16,7 @@
 
 ---
 
-## 🧱 Architecture
+## Architecture
 
 ![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/master/docs/cellcraft-ai-architecture.png)
 
@@ -29,7 +29,39 @@
 
 ---
 
-## 📦 Setup (Local Dev)
+## Demo
+
+### Step 1: Start a Project
+![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/master/docs/create-project.png)
+
+Upload a CSV file that you wish to analyse. Each project starts with uploading a CSV. All the conversations will be based on the uploaded CSV. Transformations applied by the Agent will be applied to the same data.
+
+### Step 2: Give a Prompt
+![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/master/docs/Chat.png)
+
+CellCraft's AI is designed to limit its responses to the CSV data, exploration strategies and Analysis reports.
+The Agent has access to following libraries in its Sandbox environment
+- Numpy
+- Pandas
+- Matplotlib
+- Seaborn
+
+Any instruction to perform task that go beyond the scope of these libraries will result into error reponse.
+CellCraft-AI can suggest you what visualizations can be derived from the given data, and do it for you with one prompt.
+
+### Step 3: View Agent's Response
+![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/master/docs/DataOutput.png)
+
+The Agent generates its own code based on the prompt request, executes it in an isolated environment. The programs outputs in the form of Markdown/ CSV/ PNG files which are uploaded to an S3 bucket, and each transform is checkpointed using Git Style Commits, except the commits are internally managed by the Agent. You can also create new branches or change the Commit HEAD to apply new data transforms. At any point you can view the previously generated responses and download the generated files.
+
+### Step 4: Track Transforms
+![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/master/docs/Commit-DAG.png)
+
+To make things easier to track, we have provided a Commit tracker UI, its draggable, scrollable, pannable which you can use to view the progression of your data transforms.
+
+---
+
+## Setup (Local Dev)
 
 ### 1. Clone the repo
 
