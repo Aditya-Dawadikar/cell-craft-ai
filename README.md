@@ -29,7 +29,21 @@
 
 ---
 
-## Demo
+## CellCraft-AI in Action
+
+![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/master/docs/CellCraftAI-Demo.gif)
+
+---
+
+## Views
+### Dashboard
+![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/master/docs/dashboard.png)
+
+The Dashboard has 4 Panels
+- Navigation: Navigate to any previous chats, or create a new project
+- Chat: Interact with the agent using simple prompts
+- Data Preview: View and Download the data generated
+- Commit History: Track data transforms and factual conversations
 
 ### Step 1: Start a Project
 ![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/master/docs/create-project.png)
