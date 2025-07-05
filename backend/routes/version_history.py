@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from controllers.SessionController import (get_session_by_session_id)
 from controllers.CommitController import (query_commits, get_commit_by_id)
 from storage.storage_utils import get_file_list, generate_presigned_get_url
+from cache.signed_url_cache import get_signed_url
 
 router = APIRouter()
 
@@ -74,9 +75,9 @@ async def list_commit_files(session_id: str = Query(...), commit_id: str = Query
             files.append({
                 "title": file.title,
                 "type": file.type,
-                "url": await generate_presigned_get_url(bucket=os.getenv("S3_BUCKET_NAME"), s3_file_path=file.url)
+                "url": await get_signed_url(bucket=os.getenv("S3_BUCKET_NAME"), s3_file_path=file.url)
             })
-
+        
         return JSONResponse(content={
             "commit_id": commit_id,
             "files": files
