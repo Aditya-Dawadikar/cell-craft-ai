@@ -12,3 +12,7 @@ motor
 pymongo
 boto3
 redis
+langchain
+langchain-community
+langchain-google-genai
+google-generativeai

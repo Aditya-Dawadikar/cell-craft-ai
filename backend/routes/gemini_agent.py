@@ -25,6 +25,8 @@ from google import genai
 import dotenv
 dotenv.load_dotenv()
 
+from services.langchain_chain import transform_chain
+
 BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 
 # Load your API key (from .env or hardcoded for testing)
@@ -71,91 +73,24 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
 
         df_preview = df.head(5).to_csv(index=False)
 
-        prompt = f"""
-                    You are a data cleaning assistant. The user gave you this preview:
-                    {df_preview}
+        inputs = {
+            "preview": df_preview,
+            "context": key_step_changelog,   # <- directly reused
+            "query": query
+        }
 
-                    Previous steps:
-                    {key_step_changelog}
-
-                    User says: "{query}"
-
-                    You operate in an isolated Python environment. You are allowed to:
-                    - Use ONLY the following libraries: pandas, numpy, matplotlib (as plt), seaborn (as sns)
-                    - Answer only questions about the data provided in the CSV
-                    - Politely decline unrelated questions and suggest asking questions about the dataset
-
-                    Always write code's output to a markdown or a readme file and save it
-                    When visualizing data (using matplotlib/seaborn), DO NOT show or display the plot. Instead, save the chart to a file using `plt.savefig("<filename>")`.
-                    When describing data (using pandas), DO NOT print or display the data. Instead, save the response as markdown or txt file.
-                    
-                    always generate some text based code output for manual verification
-
-                    You must respond using one of the following JSON formats:
-
-                    If replying in plain text:
-                    {{
-                    "mode": "CHAT",
-                    "response": "<your message>"
-                    }}
-
-                    If applying transformation:
-                    {{
-                    "mode": "CODE",
-                    "key_steps": "<summary>",
-                    "executable_code": "<python pandas code>",
-                    "response": "<acknowledgement of transforms>"
-                    }}
-
-                    You can also manage which CSV version you're working on.
-                    If the user says "undo", "redo", or "start over from commit XYZ", respond in CONTEXT mode.
-
-                    If changing HEAD:
-                    {{
-                    "mode": "CONTEXT",
-                    "action": "checkout",
-                    "target_commit_id": "<commit_id>",
-                    "response": "<acknowledgement of context change>"
-                    }}
-
-                    If creating a new branch from an older commit:
-                    {{
-                    "mode": "CONTEXT",
-                    "action": "branch",
-                    "target_commit_id": "<commit_id>",
-                    "response": "<acknowledgement of context change>"
-                    }}
-
-                    IMPORTANT:
-                    - All output must be a single valid JSON object.
-                    - Never include code outside the "executable_code" field.
-                    - Do not attempt to write files to directories other than the current working directory.
-
-                    When saving files like charts or summaries, use the variable commit_dir as the output folder. Example:
-                    plt.savefig(f"{{commit_dir}}/myplot.png")
-                    or
-                    with open(f"{{commit_dir}}/summary.md", "w") as f: f.write(summary)
-
-                    You are provided the DataFrame as a variable named `df`. 
-                    - Do NOT use `pd.read_csv()` or try to load 'df.csv'.
-                    - The DataFrame is already available in memory.
-                    - Any cleaned or transformed result should overwrite the existing `df` variable.
-
-                    Return ONLY valid JSON.
-                """
-
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash", contents=prompt
-        )
-
-        response_text = response.candidates[0].content.parts[0].text
+        response = await transform_chain.ainvoke(inputs)
+        response_text = response.content
+        
         cleaned = re.sub(r"^```json|```$", "", response_text, flags=re.IGNORECASE).strip()
 
         fixed = re.sub(r'f"({.*?})"', lambda m: '"' + m.group(1).replace('{', '{{').replace('}', '}}') + '"', cleaned)
 
         # Safely load the JSON
-        parsed = json.loads(fixed)
+        try:
+            parsed = json.loads(fixed)
+        except json.JSONDecodeError:
+            return JSONResponse(content={"error": "Failed to parse LLM response as JSON"}, status_code=400)
 
         if parsed["mode"] == "CHAT":
             # handle chat response
