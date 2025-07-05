@@ -14,6 +14,7 @@ from routes import db_sessions
 
 from db_init import init_db
 from s3_init import init_s3
+from redis_init import init_redis
 
 dotenv.load_dotenv()
 
@@ -66,6 +67,9 @@ async def setup_session_storage():
 
     # initialize S3 storage
     await init_s3()
+
+    # intialize Redis cache
+    await init_redis()
 
     # Create folder structure
     os.makedirs(SESSION_FILES_DIR, exist_ok=True)

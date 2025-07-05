@@ -11,3 +11,4 @@ beanie
 motor
 pymongo
 boto3
+redis
