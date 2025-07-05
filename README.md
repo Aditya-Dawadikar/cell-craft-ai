@@ -22,10 +22,11 @@
 
 - **Frontend**: React + Vite
 - **Backend**: FastAPI (Python 3.10+)
-- **Vector Model**: Gemini-2.5 via Google API
+- **Agent**: Langchain + Gemini-2.5 Flash
 - **Storage**: 
   - File storage → **AWS S3**
   - Metadata → **MongoDB Atlas**
+  - Cache → **Redis**
 
 ---
 
