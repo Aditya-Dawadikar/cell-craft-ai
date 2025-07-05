@@ -15,7 +15,10 @@ from controllers.SessionController import (get_session_by_session_id,
                                            update_session)
 from controllers.CommitController import (create_commit,
                                           get_commits_by_session_id,
-                                          update_commit)
+                                          update_commit,
+                                          get_commits)
+from controllers.CheckpointController import (get_latest_checkpoint_by_session_id,
+                                              create_commit_with_checkpoint)
 from s3_init import get_s3
 from storage.storage_utils import (upload_commit_folder)
 from models.requestModels.commit import GeneratedFile
@@ -60,12 +63,19 @@ async def transform_csv(session_id: str = Form(...), query: str = Form(...)):
 
         df = pd.read_csv(local_path)
 
-        # 3. Get commit history from DB
-        all_commits = await get_commits_by_session_id(session_id)
+        latest_checkpoint = await get_latest_checkpoint_by_session_id(session_id=session_id)
+
+        if latest_checkpoint:
+            commits_list = await get_commits(session_id=session_id,
+                                             since_timestamp=latest_checkpoint.timestamp)
+            
+        else:
+            commits_list = await get_commits_by_session_id(session_id)
+        
         history = sorted(
-            [c for c in all_commits if c.success],
-            key=lambda c: c.timestamp
-        )
+                        [c for c in commits_list if c.success],
+                        key=lambda c: c.timestamp
+                    )
 
         key_step_changelog = "\n".join(
             [f"- {c.commit_id}:{c.key_steps}" for c in history if c.key_steps]
@@ -118,7 +128,7 @@ async def handle_code_response(session_id, session, query, parsed, df):
     parent_commit = session.head
 
     # Step 1: Create commit document early
-    commit_doc = await create_commit(
+    commit_doc = await create_commit_with_checkpoint(
         session_id=session_id,
         parent_commit=parent_commit,
         query=query,
@@ -226,7 +236,6 @@ async def handle_chat_response(session_id, session, query, parsed):
             success=True,
             error=None
         )
-        
         # 2. Update session HEAD
         await update_session(
             session_id=session_id,
