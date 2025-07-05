@@ -32,6 +32,61 @@ To address this, we designed and implemented a **Checkpoint-Based Context Conden
   ```
 * Only the **latest checkpoint + the uncheckpointed recent commits** are passed to the LLM, keeping context short, meaningful, and consistent.
 
+### Algorithm
+
+![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/docs/docs/CheckpointBasedCondensation.png)
+
+To optimize token usage and maintain efficient long-term memory, CellCraft-AI uses a **checkpoint-based context condensation system**. Here's how it works:
+
+---
+
+## Checkpoint-Based Context Management Algorithm (CellCraft-AI):
+
+1. **Receive Data Transformation Request**
+
+   * The system receives a user query or transformation instruction from the UI.
+
+2. **Build Context**
+
+   * Fetch the **latest checkpoint summary** from the `checkpoints` collection (MongoDB).
+   * Fetch the **list of uncheckpointed commits** from the `commits` collection.
+   * Merge both into a concise context for the LLM.
+
+3. **Send Query to LLM and Receive Action**
+
+   * The merged context and user query are sent to the **LangChain + Gemini agent**.
+   * The model returns either Python code, a suggested action, or a response.
+
+4. **Perform Action**
+
+   * The suggested action (usually code) is executed inside the **Python Sandbox**.
+   * Generated outputs (CSV, Markdown, visualizations) are created.
+
+5. **Create New Commit**
+
+   * A new **commit** is created containing the query, action, and key steps.
+   * This commit is saved to the `commits` collection.
+
+6. **Check Checkpoint Queue Size**
+
+   * The system checks if the number of uncheckpointed commits exceeds a predefined threshold.
+
+7. **Update or Create Checkpoint**
+
+   * If the checkpoint queue is **not full**:
+
+     * The new commit is simply **added to the latest checkpoint’s commit queue**.
+   * If the queue **is full**:
+
+     * A new **checkpoint summary** is generated using **LangChain summarization**.
+     * The uncheckpointed commits are condensed into this summary.
+     * A new **checkpoint document** is created, resetting the queue.
+
+8. **Return Final Response**
+
+   * The final response, including any generated files, is returned to the user interface.
+
+---
 ### Example
 
 ### Before: Verbose `key_steps` (Uncondensed)
