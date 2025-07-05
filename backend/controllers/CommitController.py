@@ -159,3 +159,26 @@ async def get_commits_by_session_id(session_id: str,
     ordering = [("timestamp", DESCENDING if descending else ASCENDING)]
 
     return await Commit.find(query).sort(ordering).to_list()
+
+async def get_commits(
+    session_id: str,
+    since_timestamp: Optional[str] = None,
+    commit_ids: Optional[List[str]] = None
+) -> List[Commit]:
+    query = {
+        "session_id": ObjectId(session_id),
+        "is_deleted": False
+    }
+
+    if since_timestamp:
+        query["timestamp"] = {"$gt": since_timestamp}
+
+    if commit_ids:
+        try:
+            oid_list = [ObjectId(cid) for cid in commit_ids]
+            query["commit_id"] = {"$in": oid_list}
+        except Exception:
+            return []
+
+    commits = await Commit.find(query).sort("timestamp").to_list()
+    return commits
