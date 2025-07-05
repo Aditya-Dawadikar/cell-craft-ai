@@ -30,6 +30,14 @@
 
 ---
 
+### Context Management
+
+CellCraftAI uses a Checkpointing based Context Management algorithm.
+
+[Checkpoint Based Context Management Algorithm](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/docs/docs/ContextCondensation.md)
+
+---
+
 ## CellCraft-AI in Action
 
 ![img](https://github.com/Aditya-Dawadikar/cell-craft-ai/blob/master/docs/CellCraftAI-Demo.gif)
