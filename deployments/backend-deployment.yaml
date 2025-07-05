@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cellcraft-ai-backend
+  labels:
+    app: cellcraft-ai-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cellcraft-ai-backend
+  template:
+    metadata:
+      labels:
+        app: cellcraft-ai-backend
+    spec:
+      imagePullSecrets:
+      - name: cellcraft-ecr-secret
+      containers:
+      - name: cellcraft-ai-backend
+        image: 777064612419.dkr.ecr.us-east-2.amazonaws.com/cellcraft-ai:backend-latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: aws_access_key_id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: aws_secret_access_key
+        - name: AWS_DEFAULT_REGION
+          value: "us-west-2"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: mongodb_uri
+        - name: S3_BUCKET_NAME
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: s3_bucket_name
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: gemini_api_key
+        - name: SESSION_ROOT
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: session_root

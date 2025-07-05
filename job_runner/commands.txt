@@ -1,0 +1,9 @@
+# Creating docker images inside minikube's docker environment
+## Linux
+eval $(minikube docker-env)
+
+## Windows
+minikube docker-env --shell cmd
+
+# Build Docker Image
+docker build -t cellcraft-ai-job-runner:latest .

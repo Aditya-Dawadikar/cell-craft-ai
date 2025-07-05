@@ -11,6 +11,7 @@ from routes import version_history
 from routes import sessions
 from routes import db_commits
 from routes import db_sessions
+from fastapi.responses import JSONResponse
 
 from db_init import init_db
 from s3_init import init_s3
@@ -45,7 +46,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory=SESSION_ROOT), name='static')
+# app.mount("/static", StaticFiles(directory=SESSION_ROOT), name='static')
 
 app.include_router(gemini_agent.router)
 app.include_router(version_history.router)
@@ -57,6 +58,13 @@ app.include_router(db_commits.router)
 def save_sessions():
     with open(SESSION_STORE_FILE, "w") as f:
         json.dump(session_cache, f, indent=2)
+
+@app.get("/ping")
+def ping():
+    return JSONResponse({
+        "success": True,
+        "message": "React CellCraft-AI"
+    })
 
 @app.on_event("startup")
 async def setup_session_storage():

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cellcraft-ai-backend-service
+spec:
+  type: NodePort  # or LoadBalancer if you prefer
+  selector:
+    app: cellcraft-ai-backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000

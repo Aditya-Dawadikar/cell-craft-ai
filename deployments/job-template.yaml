@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cellcraft-ai-job-PLACEHOLDER  # Replace with unique job name at runtime
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: cellcraft-ai-job
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: cellcraft-ai-job-runner
+        image: cellcraft-ai-job-runner:latest  # Built inside Minikube or pulled from registry
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: aws_access_key_id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: aws_secret_access_key
+        - name: AWS_DEFAULT_REGION
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: aws_default_region
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: mongodb_uri
+        - name: S3_BUCKET_NAME
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: s3_bucket_name
+        - name: SESSION_ROOT
+          valueFrom:
+            secretKeyRef:
+              name: cellcraft-ai-secrets
+              key: session_root
+
+        # Dynamic Job-specific environment variables (must be set in your launcher code)
+        - name: SESSION_ID
+          value: "PLACEHOLDER_SESSION_ID"
+        - name: COMMIT_ID
+          value: "PLACEHOLDER_COMMIT_ID"
+        - name: CODE_S3_PATH
+          value: "PLACEHOLDER_CODE_S3_PATH"
+        - name: INPUT_S3_PATH
+          value: "PLACEHOLDER_INPUT_S3_PATH"
+        - name: OUTPUT_S3_PREFIX
+          value: "PLACEHOLDER_OUTPUT_S3_PREFIX"
+
+        imagePullPolicy: IfNotPresent

@@ -49,3 +49,4 @@ backend/session_data/
 **/session_files
 
 secrets.txt
+secret_commands.txt

@@ -2,6 +2,8 @@ fastapi
 uvicorn
 pandas
 numpy
+matplotlib
+seaborn
 google-genai
 python-multipart
 aiofiles

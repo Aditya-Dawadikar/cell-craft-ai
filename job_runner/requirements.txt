@@ -1,0 +1,9 @@
+pandas
+numpy
+matplotlib
+seaborn
+aiofiles
+scikit-learn
+dotenv
+boto3
+openpyxl
