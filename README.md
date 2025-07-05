@@ -104,6 +104,7 @@ AWS_DEFAULT_REGION=us-west-2
 S3_BUCKET_NAME=your-s3-bucket
 MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/cellcraft-ai
 GEMINI_API_KEY=your-google-api-key
+REDIS_URL=redis://localhost:6379
 ```
 
 #### Frontend
