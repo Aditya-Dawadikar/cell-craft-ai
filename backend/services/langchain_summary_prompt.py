@@ -11,9 +11,6 @@ history_summary_prompt = ChatPromptTemplate.from_messages([
         action: "<brief description of transformation attempted>"
         outcome: "<brief description of result OR error if failed>"
 
-        Here is the transformation history:
-        {full_history}
-
         Rules:
         - If the history indicates success: summarize the successful outcome.
         - If the history indicates an error: describe the error in the outcome field.
@@ -30,5 +27,7 @@ history_summary_prompt = ChatPromptTemplate.from_messages([
         action: "called plt.hist() with invalid data"
         outcome: "error: incompatible data type for plotting"
     """),
-    ("human", "{full_history}")
+    ("human", """Here is the transformation history:
+        {full_history}
+    """)
 ])

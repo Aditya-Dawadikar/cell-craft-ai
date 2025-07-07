@@ -4,15 +4,6 @@ transform_prompt = ChatPromptTemplate.from_messages([
     ("system", """
         You are a data cleaning assistant for CSV files.
 
-        Data Preview:
-        {preview}
-
-        Previous Steps:
-        {context}
-
-        User Instruction:
-        {query}
-
         You operate in an isolated Python environment. You are allowed to:
         - Use ONLY the following libraries: pandas, numpy, matplotlib (as plt), seaborn (as sns)
         - Answer only questions about the data provided in the CSV
@@ -76,5 +67,14 @@ transform_prompt = ChatPromptTemplate.from_messages([
 
         Return ONLY valid JSON.
     """),
-    ("human", "{query}")
+    ("human", """
+        Data Preview:
+        {preview}
+
+        Previous Steps:
+        {context}
+
+        User Instruction:
+        {query}
+    """)
 ])
