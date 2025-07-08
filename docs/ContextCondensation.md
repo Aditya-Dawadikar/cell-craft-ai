@@ -97,6 +97,8 @@ Generating a data summary including data types, non-null counts, descriptive sta
 
 * **Approximate Token Count:** \~100 tokens
 
+For a context with 100 commits, the token count will be **10,000 Tokens**
+
 ---
 
 ### After: Condensed Checkpoint (MDP-Style)
@@ -107,22 +109,28 @@ action: "checked data types, fixed errors"
 outcome: "errors removed, data summarized"
 ```
 
-* **Approximate Token Count:** \~13 tokens
+* **Approximate Token Count:** \~30 tokens
 
----
+For a context with 100 commits, the token count will be 3000 Tokens if we have linear growth.
 
-### Token Savings:
+Formula for generating context is:
 
-| Metric                 | Before       | After               |
-| ---------------------- | ------------ | ------------------- |
-| Token Count (per step) | \~100 tokens | \~13 tokens         |
-| Reduction Achieved     | —            | **\~87% reduction** |
+```Context = Checkpoint Summary + last 10 commits with full detail```
+
+:. Context Token Count ~ 30x90 + 100*10
+
+:. Context Token Count ~ **3700**
+
+:. Percentage Token Count Reduction = (10,000 - 3700)/10,000
+
+:. Percentage Token Count Reduction ~ **63% reduction**
+
 
 ---
 
 ✅ By introducing this structured condensation:
 
-* We reduced **prompt token usage per transformation step by \~85–90%**.
+* We reduced **prompt token usage per transformation step by \~60-65**.
 * This enables **longer-running sessions**, **lower LLM cost**, and **clearer context for downstream agents**.
 
 ---
